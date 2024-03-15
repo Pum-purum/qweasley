@@ -12,6 +12,7 @@ use Doctrine\ORM\Mapping\UnderscoreNamingStrategy;
 use Doctrine\ORM\ORMSetup;
 use SergiX44\Nutgram\Configuration;
 use SergiX44\Nutgram\Nutgram;
+use SergiX44\Nutgram\RunningMode\Webhook;
 use Symfony\Component\Cache\Adapter\PdoAdapter;
 
 global $entityManager, $password;
@@ -67,6 +68,7 @@ function handler($payload, $context) {
     $bot = new Nutgram($_ENV['TELEGRAM_TOKEN'], new Configuration(
         cache: $dbCache
     ));
+    $bot->setRunningMode(Webhook::class);
 
     $bot->onCommand('start', StartConversation::class)->description('Начать квиз');
     $bot->onCommand('balance', BalanceConversation::class)->description('Баланс');
