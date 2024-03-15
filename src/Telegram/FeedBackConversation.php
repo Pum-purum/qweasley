@@ -1,0 +1,45 @@
+<?php
+
+namespace App\Telegram;
+
+use App\Entity\Chat;
+use App\Entity\FeedBack;
+use SergiX44\Nutgram\Conversations\Conversation;
+use SergiX44\Nutgram\Nutgram;
+
+class FeedBackConversation extends Conversation {
+
+    public string $action = '';
+    public ?Chat $chat;
+
+    public function start(Nutgram $bot) {
+        $chat = em()->getRepository(Chat::class)->findOneBy(['telegramId' => $bot->chatId()]);
+        if (null === $chat) {
+            $chat = new Chat();
+            $chat->setTelegramId($bot->chatId());
+
+            em()->persist($chat);
+            em()->flush();
+        }
+
+        $this->chat = $chat;
+
+        $bot->sendMessage('Если у вас есть вопросы, предложения или жалобы, напишите их следующим сообщением. Мы обязательно их увидим.');
+
+        $this->next('waitResponse');
+    }
+
+    public function waitResponse(Nutgram $bot) {
+        $bot->sendMessage('Ваше сообщение принято! Спасибо.');
+
+        $chat = em()->getRepository(Chat::class)->findOneBy(['telegramId' => $bot->chatId()]);
+        $feedback = new FeedBack();
+        $feedback->setChat($chat);
+        $feedback->setText($bot->message()->text);
+
+        em()->persist($feedback);
+        em()->flush();
+
+        $this->end();
+    }
+}
