@@ -20,6 +20,7 @@ global $entityManager, $password;
 require_once "vendor/autoload.php";
 
 function createEm(): EntityManager {
+    global $password;
     $paths = ['./'];
 
     // the connection configuration
@@ -29,7 +30,7 @@ function createEm(): EntityManager {
         'host'        => $_ENV['DB_HOST'],
         'user'        => $_ENV['DB_USER'],
         'port'        => $_ENV['DB_PORT'],
-        'password'    => $_ENV['DB_PASS'],
+        'password'    => $password,
         'dbname'      => $_ENV['DB_NAME'],
         'sslmode'     => 'require',
     ];
@@ -43,7 +44,8 @@ function createEm(): EntityManager {
 }
 
 function em(): EntityManager {
-    global $entityManager, $password;
+    global $entityManager;
+
     if (!$entityManager || !$entityManager->isOpen()) {
         $entityManager = createEm();
     }
@@ -61,7 +63,7 @@ function handler($payload, $context) {
         3600,
         [
             'db_username' => $params['user'],
-            'db_password' => $params['password'],
+            'db_password' => $password,
         ]
     );
     $dbCache = new DbCache($cache);
