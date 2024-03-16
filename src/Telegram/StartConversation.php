@@ -53,7 +53,7 @@ class StartConversation extends Conversation {
         $question = em()->getRepository(Question::class)->getQuestion($this->chat());
         if (null === $question) {
             $bot->sendMessage('Уоу, вы ответили на все вопросы! Приходите завтра! Новые интересные вопросы появляются каждый день!');
-            $bot->sendMessage('Достигнут конец вопросов в чате ' . $bot->chatId(), 447621407);
+            $bot->sendMessage('Достигнут конец вопросов в чате ' . $bot->chatId(), $_ENV['ADMIN_CHAT_ID']);
             $this->end();
 
             return;
@@ -201,7 +201,7 @@ class StartConversation extends Conversation {
                                    );
     }
     private function failMessage(): string {
-        $response = "*Правильный ответ:*\n" . $this->question()->getAnswer();
+        $response = "*Правильный ответ:*\n" . $this->escape($this->question()->getAnswer());
         $response .= $this->comment();
 
         return $response;
@@ -216,9 +216,7 @@ class StartConversation extends Conversation {
 
     private function comment(): string {
         if (null !== $this->question()->getComment()) {
-            $response = sprintf("\n\n%s", $this->question()->getComment());
-
-            return str_replace(".", "\.", $response);
+            return sprintf("\n\n%s", $this->escape($this->question()->getComment()));
         }
 
         return '';
@@ -235,5 +233,34 @@ class StartConversation extends Conversation {
 
     private function picture(string $path): string {
         return "https://storage.yandexcloud.net/qweasley/" . $path;
+    }
+    private function escape(string $text): string {
+        foreach ([
+                     '?',
+                     '!',
+                     '_',
+                     '*',
+                     '[',
+                     ']',
+                     '(',
+                     ')',
+                     '~',
+                     '`',
+                     '>',
+                     '<',
+                     '&',
+                     '#',
+                     '+',
+                     '-',
+                     '=',
+                     '|',
+                     '{',
+                     '}',
+                     '.'
+                 ] as $symbol) {
+            $text = str_replace($symbol, '\\' . $symbol, $text);
+        }
+
+        return $text;
     }
 }
