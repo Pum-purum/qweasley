@@ -1,6 +1,7 @@
 <?php
 
 use App\Cache\DbCache;
+use App\Extension\ServerlessMode;
 use App\Telegram\BalanceConversation;
 use App\Telegram\FeedBackConversation;
 use App\Telegram\ProposalConversation;
@@ -12,7 +13,6 @@ use Doctrine\ORM\Mapping\UnderscoreNamingStrategy;
 use Doctrine\ORM\ORMSetup;
 use SergiX44\Nutgram\Configuration;
 use SergiX44\Nutgram\Nutgram;
-use SergiX44\Nutgram\RunningMode\Webhook;
 use Symfony\Component\Cache\Adapter\PdoAdapter;
 
 global $entityManager, $password;
@@ -21,7 +21,8 @@ require_once "vendor/autoload.php";
 
 function createEm(): EntityManager {
     global $password;
-    $paths = ['./'];
+
+    $paths = [__DIR__];
 
     // the connection configuration
     $dbParams = [
@@ -54,11 +55,13 @@ function em(): EntityManager {
 }
 
 function handler($payload, $context) {
-    global $password;
+    global $password, $updates;
+
     $password = $context->getToken()->getAccessToken();
+    $updates = $payload['body'];
     $params = em()->getConnection()->getParams();
     $cache = new PdoAdapter(
-        sprintf('%s:host=%s;port=%s;dbname=%s;sslmode=require', $params['driver'], $params['host'], $params['port'], $params['dbname']),
+        sprintf('%s:host=%s;port=%s;dbname=%s;sslmode=%s', $params['driver'], $params['host'], $params['port'], $params['dbname'], $params['sslmode']),
         '',
         3600,
         [
@@ -70,7 +73,7 @@ function handler($payload, $context) {
     $bot = new Nutgram($_ENV['TELEGRAM_TOKEN'], new Configuration(
         cache: $dbCache
     ));
-    $bot->setRunningMode(Webhook::class);
+    $bot->setRunningMode(ServerlessMode::class);
 
     $bot->onCommand('start', StartConversation::class)->description('Начать квиз');
     $bot->onCommand('balance', BalanceConversation::class)->description('Баланс');
