@@ -8,7 +8,8 @@
     "nutgram/nutgram": "^4.16",
     "symfony/uid": "^7.0",
     "symfony/http-foundation": "^7.0",
-    "aws/aws-sdk-php": "^3.300"
+    "aws/aws-sdk-php": "^3.300",
+    "ext-pdo": "*"
   },
   "autoload": {
     "psr-4": {

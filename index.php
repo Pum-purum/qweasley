@@ -26,7 +26,7 @@ function createEm(): EntityManager {
 
     // the connection configuration
     $dbParams = [
-        'driver'      => 'pgsql',
+        'driver'      => 'postgres',
         'driverClass' => 'Doctrine\DBAL\Driver\PDO\PgSQL\Driver',
         'host'        => $_ENV['DB_HOST'],
         'user'        => $_ENV['DB_USER'],
@@ -57,22 +57,27 @@ function em(): EntityManager {
 function handler($payload, $context) {
     global $password, $updates;
 
-    $smallBot = new Nutgram($_ENV['TELEGRAM_TOKEN']);
+    $password = $context->getToken()->getAccessToken();
 
     try {
-        $password = $context->getToken()->getAccessToken();
         $updates = $payload['body'];
         $params = em()->getConnection()->getParams();
 
         $cache = new PdoAdapter(
-            sprintf('%s:host=%s;port=%s;dbname=%s;sslmode=%s', $params['driver'], $params['host'], $params['port'], $params['dbname'], $params['sslmode']),
+            sprintf('pgsql:host=%s;port=%s;dbname=%s;sslmode=%s', $params['host'], $params['port'], $params['dbname'], $params['sslmode']),
             '',
             0,
             [
                 'db_username' => $params['user'],
                 'db_password' => $password,
+                'db_connection_options' => [
+                    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                    PDO::ATTR_EMULATE_PREPARES   => true,
+                ]
             ]
         );
+
         $dbCache = new DbCache($cache);
         $bot = new Nutgram($_ENV['TELEGRAM_TOKEN'], new Configuration(
             cache: $dbCache
@@ -90,8 +95,6 @@ function handler($payload, $context) {
         $bot->onCommand('proposal@qweasleybot', ProposalConversation::class)->description('Предложить вопрос');
         $bot->run();
     } catch (Exception $e) {
-        $smallBot->sendMessage((string)$e, chat_id: $_ENV['ADMIN_CHAT_ID']);
-
         return [
             'statusCode' => 400,
             'body'       => $e->getMessage()
