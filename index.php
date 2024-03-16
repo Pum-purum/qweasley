@@ -57,35 +57,49 @@ function em(): EntityManager {
 function handler($payload, $context) {
     global $password, $updates;
 
-    $password = $context->getToken()->getAccessToken();
-    $updates = $payload['body'];
-    $params = em()->getConnection()->getParams();
-    $cache = new PdoAdapter(
-        sprintf('%s:host=%s;port=%s;dbname=%s;sslmode=%s', $params['driver'], $params['host'], $params['port'], $params['dbname'], $params['sslmode']),
-        '',
-        3600,
-        [
-            'db_username' => $params['user'],
-            'db_password' => $password,
-        ]
-    );
-    $dbCache = new DbCache($cache);
-    $bot = new Nutgram($_ENV['TELEGRAM_TOKEN'], new Configuration(
-        cache: $dbCache
-    ));
-    $bot->setRunningMode(ServerlessMode::class);
+    $smallBot = new Nutgram($_ENV['TELEGRAM_TOKEN']);
 
-    $bot->onCommand('start', StartConversation::class)->description('Начать квиз');
-    $bot->onCommand('balance', BalanceConversation::class)->description('Баланс');
-    $bot->onCommand('rules', RulesConversation::class)->description('Правила');
-    $bot->onCommand('feedback', FeedBackConversation::class)->description('Обратная связь');
-    $bot->onCommand('proposal', ProposalConversation::class)->description('Предложить вопрос');
+    try {
+        $password = $context->getToken()->getAccessToken();
+        $updates = $payload['body'];
+        $params = em()->getConnection()->getParams();
 
-    $bot->onCommand('start@qweasleybot', StartConversation::class)->description('Начать квиз');
-    $bot->onCommand('balance@qweasleybot', BalanceConversation::class)->description('Баланс');
-    $bot->onCommand('rules@qweasleybot', RulesConversation::class)->description('Правила');
-    $bot->onCommand('feedback@qweasleybot', FeedBackConversation::class)->description('Обратная связь');
-    $bot->onCommand('proposal@qweasleybot', ProposalConversation::class)->description('Предложить вопрос');
+        $cache = new PdoAdapter(
+            sprintf('%s:host=%s;port=%s;dbname=%s;sslmode=%s', $params['driver'], $params['host'], $params['port'], $params['dbname'], $params['sslmode']),
+            '',
+            0,
+            [
+                'db_username' => $params['user'],
+                'db_password' => $password,
+            ]
+        );
+        $dbCache = new DbCache($cache);
+        $bot = new Nutgram($_ENV['TELEGRAM_TOKEN'], new Configuration(
+            cache: $dbCache
+        ));
+        $bot->setRunningMode(ServerlessMode::class);
+        $bot->onCommand('start', StartConversation::class)->description('Начать квиз');
+        $bot->onCommand('balance', BalanceConversation::class)->description('Баланс');
+        $bot->onCommand('rules', RulesConversation::class)->description('Правила');
+        $bot->onCommand('feedback', FeedBackConversation::class)->description('Обратная связь');
+        $bot->onCommand('proposal', ProposalConversation::class)->description('Предложить вопрос');
+        $bot->onCommand('start@qweasleybot', StartConversation::class)->description('Начать квиз');
+        $bot->onCommand('balance@qweasleybot', BalanceConversation::class)->description('Баланс');
+        $bot->onCommand('rules@qweasleybot', RulesConversation::class)->description('Правила');
+        $bot->onCommand('feedback@qweasleybot', FeedBackConversation::class)->description('Обратная связь');
+        $bot->onCommand('proposal@qweasleybot', ProposalConversation::class)->description('Предложить вопрос');
+        $bot->run();
+    } catch (Exception $e) {
+        $smallBot->sendMessage((string)$e, chat_id: $_ENV['ADMIN_CHAT_ID']);
 
-    $bot->run();
+        return [
+            'statusCode' => 400,
+            'body'       => $e->getMessage()
+        ];
+    }
+
+    return [
+        'statusCode' => 200,
+        'body'       => ''
+    ];
 }
