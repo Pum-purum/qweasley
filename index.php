@@ -36,7 +36,7 @@ function createEm(): EntityManager {
         'sslmode'     => 'require',
     ];
     $namingStrategy = new UnderscoreNamingStrategy(CASE_UPPER);
-    $config = ORMSetup::createAttributeMetadataConfiguration($paths, false);
+    $config = ORMSetup::createAttributeMetadataConfiguration($paths, true);
     $config->setNamingStrategy($namingStrategy);
 
     $connection = DriverManager::getConnection($dbParams, $config);
