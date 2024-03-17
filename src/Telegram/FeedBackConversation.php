@@ -27,9 +27,11 @@ class FeedBackConversation extends Conversation {
     }
 
     public function waitResponse(Nutgram $bot) {
-        if (null !== $bot->callbackQuery() || null === $bot->message() || mb_strlen($bot->message()->text) < 3) {
+        if (null !== $bot->callbackQuery() || null === $bot->message() || mb_strlen((string)$bot->message()->text) < 3) {
             $bot->sendMessage('К сожалению, это некорректное сообщение.');
             $this->end();
+
+            return;
         }
 
         $bot->sendMessage('Ваше сообщение принято! Спасибо.');
