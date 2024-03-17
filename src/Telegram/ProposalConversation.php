@@ -190,11 +190,14 @@ class ProposalConversation extends Conversation {
      * @throws InvalidArgumentException
      */
     public function finish(): void {
-        $question = new Question($this->caption, $this->answer);
-        $question->setComment($this->comment);
         $chat = em()->getRepository(Chat::class)->findOneBy(['telegramId' => $this->bot->chatId()]);
+
+        $question = new Question($this->caption, $this->answer);
         $question->setAuthor($chat);
 
+        if (null !== $this->comment) {
+            $question->setComment($this->comment);
+        }
         if (null !== $this->pictureQuestion) {
             $picture = new Picture();
             $picture->setPath($this->pictureQuestion);
