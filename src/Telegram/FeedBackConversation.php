@@ -10,7 +10,6 @@ use SergiX44\Nutgram\Nutgram;
 class FeedBackConversation extends Conversation {
 
     public string $action = '';
-    public ?Chat $chat;
 
     public function start(Nutgram $bot) {
         $chat = em()->getRepository(Chat::class)->findOneBy(['telegramId' => $bot->chatId()]);
@@ -22,14 +21,17 @@ class FeedBackConversation extends Conversation {
             em()->flush();
         }
 
-        $this->chat = $chat;
-
         $bot->sendMessage('Если у вас есть вопросы, предложения или жалобы, напишите их следующим сообщением. Мы обязательно их увидим.');
 
         $this->next('waitResponse');
     }
 
     public function waitResponse(Nutgram $bot) {
+        if (null !== $bot->callbackQuery() || null === $bot->message() || mb_strlen($bot->message()->text) < 3) {
+            $bot->sendMessage('К сожалению, это некорректное сообщение.');
+            $this->end();
+        }
+
         $bot->sendMessage('Ваше сообщение принято! Спасибо.');
 
         $chat = em()->getRepository(Chat::class)->findOneBy(['telegramId' => $bot->chatId()]);
