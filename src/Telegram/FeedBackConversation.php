@@ -44,6 +44,8 @@ class FeedBackConversation extends Conversation {
         em()->persist($feedback);
         em()->flush();
 
+        $bot->sendMessage('Новое сообщение в форме обратной связи', $_ENV['ADMIN_CHAT_ID']);
+
         $this->end();
     }
 }

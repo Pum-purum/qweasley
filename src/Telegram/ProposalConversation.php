@@ -216,6 +216,7 @@ class ProposalConversation extends Conversation {
 
         $message = 'Ваш вопрос принят. Спасибо! В случае одобрения вам придет уведомление в этот чат';
         $this->bot->sendMessage($message);
+        $this->bot->sendMessage('Предложен новый вопрос', $_ENV['ADMIN_CHAT_ID']);
 
         $this->end();
     }
