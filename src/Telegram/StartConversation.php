@@ -226,7 +226,7 @@ class StartConversation extends Conversation {
         return InlineKeyboardMarkup::make()
                                    ->addRow(
                                        InlineKeyboardButton::make('Пропустить', callback_data: 'skip'),
-                                       InlineKeyboardButton::make('Сдаюсь', callback_data: 'fail'),
+                                       InlineKeyboardButton::make('Показать ответ', callback_data: 'fail'),
                                        InlineKeyboardButton::make('Закончить', callback_data: 'finish'),
                                    );
     }
