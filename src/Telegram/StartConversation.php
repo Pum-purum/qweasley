@@ -40,8 +40,6 @@ class StartConversation extends Conversation {
     }
 
     public function start(Nutgram $bot) {
-        em()->clear();
-
         if ($this->chat()->getBalance() <= 0) {
             $bot->sendMessage('У вас закончились монеты. Пополните баланс  командой /balance и ждем вас снова!');
             $this->end();
@@ -53,7 +51,7 @@ class StartConversation extends Conversation {
         $question = em()->getRepository(Question::class)->getQuestion($this->chat());
         if (null === $question) {
             $bot->sendMessage('Уоу, вы ответили на все вопросы! Приходите завтра! Новые интересные вопросы появляются каждый день!');
-            $bot->sendMessage('Достигнут конец вопросов в чате ' . $bot->chatId(), $_ENV['ADMIN_CHAT_ID']);
+            $bot->sendMessage(text: 'Достигнут конец вопросов в чате ' . $bot->chatId(), chat_id: $_ENV['ADMIN_CHAT_ID']);
             $this->end();
 
             return;
@@ -111,7 +109,6 @@ class StartConversation extends Conversation {
 
     public function handleTextResponse(Nutgram $bot) {
         if (mb_strtolower($bot->message()->text) === mb_strtolower($this->question()->getAnswer())) {
-            em()->clear();
             if (null !== $this->question()->getAnswerPicture()) {
                 $picture = em()->getRepository(Picture::class)->find($this->question()->getAnswerPicture()->getId());
                 $photo = fopen($this->picture($picture->getPath()), 'r');
@@ -158,7 +155,6 @@ class StartConversation extends Conversation {
     }
 
     private function fail(Nutgram $bot) {
-        em()->clear();
         if (null !== $this->question()->getAnswerPicture()) {
             $picture = em()->getRepository(Picture::class)->find($this->question()->getAnswerPicture()->getId());
             $photo = fopen($this->picture($picture->getPath()), 'r');
