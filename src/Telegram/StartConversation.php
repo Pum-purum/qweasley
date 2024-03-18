@@ -139,6 +139,10 @@ class StartConversation extends Conversation {
             $reaction->response();
 
             em()->flush();
+        } else {
+            $bot->sendMessage(
+                text        : 'Ответ неверный. Попробуйте еще раз'
+            );
         }
     }
 
