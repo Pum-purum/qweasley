@@ -40,6 +40,8 @@ class StartConversation extends Conversation {
     }
 
     public function start(Nutgram $bot) {
+        em()->clear();
+
         if ($this->chat()->getBalance() <= 0) {
             $bot->sendMessage('У вас закончились монеты. Пополните баланс  командой /balance и ждем вас снова!');
             $this->end();
