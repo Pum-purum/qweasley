@@ -25,7 +25,7 @@ class StartConversation extends Conversation {
         if (null === $chat) {
             $chat = new Chat();
             $chat->setTelegramId($this->bot->chatId());
-            $chat->setBalance(50);
+            $chat->setBalance(30);
             $chat->setTitle($this->bot->chat()->title);
 
             em()->persist($chat);
