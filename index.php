@@ -15,12 +15,11 @@ use SergiX44\Nutgram\Configuration;
 use SergiX44\Nutgram\Nutgram;
 use Symfony\Component\Cache\Adapter\PdoAdapter;
 
-global $entityManager, $password;
+global $entityManager;
 
 require_once "vendor/autoload.php";
 
 function createEm(): EntityManager {
-    global $password;
 
     $paths = [__DIR__];
 
@@ -31,9 +30,10 @@ function createEm(): EntityManager {
         'host'        => $_ENV['DB_HOST'],
         'user'        => $_ENV['DB_USER'],
         'port'        => $_ENV['DB_PORT'],
-        'password'    => $password,
+        'password'    => $_ENV['DB_PASSWORD'],
         'dbname'      => $_ENV['DB_NAME'],
         'sslmode'     => 'require',
+        'sslrootcert' => '/etc/ssl/certs/ca-certificates.crt'
     ];
     $namingStrategy = new UnderscoreNamingStrategy(CASE_UPPER);
     $config = ORMSetup::createAttributeMetadataConfiguration($paths, true);
@@ -55,21 +55,19 @@ function em(): EntityManager {
 }
 
 function handler($payload, $context) {
-    global $password, $updates;
-
-    $password = $context->getToken()->getAccessToken();
+    global $updates;
 
     try {
         $updates = $payload['body'];
         $params = em()->getConnection()->getParams();
 
         $cache = new PdoAdapter(
-            sprintf('pgsql:host=%s;port=%s;dbname=%s;sslmode=%s', $params['host'], $params['port'], $params['dbname'], $params['sslmode']),
+            sprintf('pgsql:host=%s;port=%s;dbname=%s;sslmode=%s;sslrootcert=%s', $params['host'], $params['port'], $params['dbname'], $params['sslmode'], $params['sslrootcert']),
             '',
             0,
             [
                 'db_username' => $params['user'],
-                'db_password' => $password,
+                'db_password' => $params['password'],
                 'db_connection_options' => [
                     PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
                     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
