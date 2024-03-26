@@ -53,7 +53,7 @@ class Chat {
     }
 
     public function __toString(): string {
-        return ' (' . ($this->id ?? '-') . ')' . ($this->title ?? '-');
+        return $this->title ?? (string)$this->telegramId;
     }
 
     public function getTitle(): ?string {

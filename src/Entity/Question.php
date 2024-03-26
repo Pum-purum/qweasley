@@ -48,7 +48,6 @@ class Question {
     public function __construct(string $text, string $answer) {
         $this->text = $text;
         $this->answer = $answer;
-        $this->isPublished = false;
     }
 
     public function getId(): ?int {

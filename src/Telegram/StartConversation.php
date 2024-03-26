@@ -53,7 +53,9 @@ class StartConversation extends Conversation {
         $question = em()->getRepository(Question::class)->getQuestion($this->chat());
         if (null === $question) {
             $bot->sendMessage('Уоу, вы ответили на все вопросы! Приходите завтра! Новые интересные вопросы появляются каждый день!');
-            $bot->sendMessage(text: 'Достигнут конец вопросов в чате ' . $bot->chatId(), chat_id: $_ENV['ADMIN_CHAT_ID']);
+            if ($bot->chatId() !== (int)$_ENV['ADMIN_CHAT_ID']) {
+                $bot->sendMessage(text: 'Достигнут конец вопросов в чате ' . $this->chat()->__toString(), chat_id: $_ENV['ADMIN_CHAT_ID']);
+            }
             $this->end();
 
             return;
