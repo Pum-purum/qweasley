@@ -65,7 +65,7 @@ class StartConversation extends Conversation {
 
         if (null !== $question->getQuestionPicture()) {
             $picture = em()->getRepository(Picture::class)->find($question->getQuestionPicture()->getId());
-            $photo = fopen($this->picture($picture->getPath()), 'r');
+            $photo = fopen($this->picture($picture->getPath()), 'rb');
 
             /** @var Message $message */
             $bot->sendPhoto(
@@ -94,8 +94,8 @@ class StartConversation extends Conversation {
         $this->action = $bot->callbackQuery()->data;
 
         if ($this->action === 'skip') {
-            if (null === $reaction = $this->reaction($bot)) {
-                $reaction = new Reaction($this->chat($bot), $this->question());
+            if (null === $reaction = $this->reaction()) {
+                $reaction = new Reaction($this->chat(), $this->question());
                 em()->persist($reaction);
             }
             $reaction->skip();
@@ -106,8 +106,7 @@ class StartConversation extends Conversation {
         } elseif ($this->action === 'continue') {
             $this->start($bot);
         } elseif ($this->action === 'finish') {
-            $bot->sendMessage('Приходите завтра! Новые интересные вопросы появляются каждый день!');
-            $this->end();
+            $this->finish($bot);
         }
     }
 
@@ -115,7 +114,7 @@ class StartConversation extends Conversation {
         if (mb_strtolower($bot->message()->text) === mb_strtolower($this->question()->getAnswer())) {
             if (null !== $this->question()->getAnswerPicture()) {
                 $picture = em()->getRepository(Picture::class)->find($this->question()->getAnswerPicture()->getId());
-                $photo = fopen($this->picture($picture->getPath()), 'r');
+                $photo = fopen($this->picture($picture->getPath()), 'rb');
 
                 /** @var Message $message */
                 $bot->sendPhoto(
@@ -131,7 +130,7 @@ class StartConversation extends Conversation {
                                   reply_markup: $this->successResponseReplyMarkUp());
             }
 
-            if (null === $reaction = $this->reaction($bot)) {
+            if (null === $reaction = $this->reaction()) {
                 $reaction = new Reaction($this->chat(), $this->question());
                 em()->persist($reaction);
             }
@@ -142,12 +141,12 @@ class StartConversation extends Conversation {
             em()->flush();
         } else {
             $bot->sendMessage(
-                text        : 'Ответ неверный. Попробуйте еще раз'
+                text: 'Ответ неверный. Попробуйте еще раз'
             );
         }
     }
 
-    public function reaction($bot): ?Reaction {
+    public function reaction(): ?Reaction {
         return em()->getRepository(Reaction::class)
                    ->createQueryBuilder('r')
                    ->where('r.chat = :chat')
@@ -161,7 +160,7 @@ class StartConversation extends Conversation {
     private function fail(Nutgram $bot) {
         if (null !== $this->question()->getAnswerPicture()) {
             $picture = em()->getRepository(Picture::class)->find($this->question()->getAnswerPicture()->getId());
-            $photo = fopen($this->picture($picture->getPath()), 'r');
+            $photo = fopen($this->picture($picture->getPath()), 'rb');
 
             /** @var Message $message */
             $bot->sendPhoto(
@@ -178,15 +177,46 @@ class StartConversation extends Conversation {
         }
 
         if (null === $reaction = $this->reaction($bot)) {
-            $reaction = new Reaction($this->chat($bot), $this->question());
+            $reaction = new Reaction($this->chat(), $this->question());
             em()->persist($reaction);
         }
 
-        $this->chat($bot)->decrease();
+        $this->chat()->decrease();
         $reaction->fail();
         em()->flush();
 
         $this->next('waitResponse');
+    }
+
+    private function finish(Nutgram $bot) {
+        if (null !== $this->question()->getAnswerPicture()) {
+            $picture = em()->getRepository(Picture::class)->find($this->question()->getAnswerPicture()->getId());
+            $photo = fopen($this->picture($picture->getPath()), 'rb');
+
+            /** @var Message $message */
+            $bot->sendPhoto(
+                photo     : InputFile::make($photo),
+                chat_id   : $bot->chatId(),
+                caption   : $this->failMessage(),
+                parse_mode: ParseMode::MARKDOWN
+            );
+        } else {
+            $bot->sendMessage(text      : $this->failMessage(),
+                              parse_mode: ParseMode::MARKDOWN);
+        }
+
+        if (null === $reaction = $this->reaction($bot)) {
+            $reaction = new Reaction($this->chat(), $this->question());
+            em()->persist($reaction);
+        }
+
+        $this->chat()->decrease();
+        $reaction->fail();
+        em()->flush();
+
+        $bot->sendMessage('Приходите завтра! Новые интересные вопросы появляются каждый день!');
+
+        $this->end();
     }
 
     private function failReplyMarkUp(): InlineKeyboardMarkup {
@@ -204,6 +234,7 @@ class StartConversation extends Conversation {
                                        InlineKeyboardButton::make('Закончить', callback_data: 'finish'),
                                    );
     }
+
     private function failMessage(): string {
         $response = "*Правильный ответ:*\n" . $this->escape($this->question()->getAnswer());
         $response .= $this->comment();
@@ -238,6 +269,7 @@ class StartConversation extends Conversation {
     private function picture(string $path): string {
         return "https://storage.yandexcloud.net/qweasley/" . $path;
     }
+
     private function escape(string $text): string {
         foreach ([
                      '?',
