@@ -13,6 +13,7 @@ use Doctrine\ORM\OptimisticLockException;
 use Psr\SimpleCache\InvalidArgumentException;
 use SergiX44\Nutgram\Conversations\Conversation;
 use SergiX44\Nutgram\Nutgram;
+use SergiX44\Nutgram\Telegram\Properties\ParseMode;
 use SergiX44\Nutgram\Telegram\Types\Keyboard\InlineKeyboardButton;
 use SergiX44\Nutgram\Telegram\Types\Keyboard\InlineKeyboardMarkup;
 use SergiX44\Nutgram\Telegram\Types\Media\PhotoSize;
@@ -28,7 +29,8 @@ class ProposalConversation extends Conversation {
     public ?string $pictureAnswer = null;
 
     public function start(Nutgram $bot) {
-        $bot->sendMessage('Отличная идея! Каким будет ваш вопрос?',
+        $bot->sendMessage("Отличная идея\! Пожалуйста\, придерживайтесь следующих правил составления вопросов\:\n1\. Вопрос не должен требовать специфичных знаний\.\n2\. Вопрос должен развлекать людей\, а не вызывать недоумение\.\n3\. Вопрос желательно должен быть с картинкой\.", parse_mode: ParseMode::MARKDOWN);
+        $bot->sendMessage('Каким будет ваш вопрос?',
             reply_markup: $this->startReplyMarkUp());
 
         $this->next('waitType');
