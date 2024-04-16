@@ -45,6 +45,9 @@ class Question {
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private ?\DateTimeImmutable $approvedAt = null;
 
+    #[ORM\Column(type: 'integer', nullable: true)]
+    private ?int $rating = 0;
+
     public function __construct(string $text, string $answer) {
         $this->text = $text;
         $this->answer = $answer;
@@ -57,6 +60,18 @@ class Question {
     public function getText(): string {
         return $this->text;
     }
+
+    public function ask(): string {
+        $text = $this->escape($this->text);
+
+        if (null !== $this->rating) {
+            $add = "На этот вопрос отвечают {$this->rating}% пользователей";
+            $text .= "\n\n" . "_" . $add . "_";
+        }
+
+        return $text;
+    }
+
     public function getAnswer(): string {
         return $this->answer;
     }
@@ -125,5 +140,45 @@ class Question {
 
     public function setApprovedAt(?\DateTimeImmutable $approvedAt): void {
         $this->approvedAt = $approvedAt;
+    }
+
+    public function getRating(): ?int {
+        return $this->rating;
+    }
+
+    public function setRating(?int $rating): self {
+        $this->rating = $rating;
+
+        return $this;
+    }
+
+    private function escape(string $text): string {
+        foreach ([
+                     '?',
+                     '!',
+                     '_',
+                     '*',
+                     '[',
+                     ']',
+                     '(',
+                     ')',
+                     '~',
+                     '`',
+                     '>',
+                     '<',
+                     '&',
+                     '#',
+                     '+',
+                     '-',
+                     '=',
+                     '|',
+                     '{',
+                     '}',
+                     '.'
+                 ] as $symbol) {
+            $text = str_replace($symbol, '\\' . $symbol, $text);
+        }
+
+        return $text;
     }
 }

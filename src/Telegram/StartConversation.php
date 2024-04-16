@@ -71,12 +71,14 @@ class StartConversation extends Conversation {
             $bot->sendPhoto(
                 photo       : InputFile::make($photo),
                 chat_id     : $bot->chatId(),
-                caption     : $question->getText(),
+                caption     : $question->ask(),
+                parse_mode  : ParseMode::MARKDOWN,
                 reply_markup: $this->questionReplyMarkUp(),
             );
         } else {
             $bot->sendMessage(
-                text        : $question->getText(),
+                text        : $question->ask(),
+                parse_mode  : ParseMode::MARKDOWN,
                 reply_markup: $this->questionReplyMarkUp(),
             );
         }
