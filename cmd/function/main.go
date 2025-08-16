@@ -105,20 +105,36 @@ func Handler(ctx context.Context, request json.RawMessage) (*Response, error) {
 
 func handleMessage(message *tgbotapi.Message) {
 	var responseText string
+	var keyboard *tgbotapi.InlineKeyboardMarkup
 
 	if message.IsCommand() {
 		switch message.Command() {
 		case "start":
-			responseText = handleStartCommand(message)
+			responseText, keyboard = handleStartCommand(message)
+		case "balance":
+			responseText = handleBalanceCommand(message)
+		case "rules":
+			responseText = handleRulesCommand(message)
+		case "feedback":
+			responseText = handleFeedbackCommand(message)
+		case "proposal":
+			responseText = handleProposalCommand(message)
 		default:
-			responseText = "Неизвестная команда. Используйте /start для начала работы."
+			responseText = "Неизвестная команда. Доступные команды: /start, /balance, /rules, /feedback, /proposal"
 		}
 	} else {
-		responseText = "Echo: " + message.Text
+		// Обработка текстовых ответов на вопросы
+		responseText, keyboard = handleTextAnswer(message)
 	}
 
 	msg := tgbotapi.NewMessage(message.Chat.ID, responseText)
-	if !message.IsCommand() {
+	msg.ParseMode = "MarkdownV2"
+
+	if keyboard != nil {
+		msg.ReplyMarkup = keyboard
+	}
+
+	if !message.IsCommand() && keyboard == nil {
 		msg.ReplyToMessageID = message.MessageID
 	}
 
@@ -127,30 +143,115 @@ func handleMessage(message *tgbotapi.Message) {
 	}
 }
 
-func handleStartCommand(message *tgbotapi.Message) string {
-	userName := message.From.FirstName
-	if userName == "" {
-		userName = message.From.UserName
-	}
-	if userName == "" {
-		userName = "друг"
+func handleStartCommand(message *tgbotapi.Message) (string, *tgbotapi.InlineKeyboardMarkup) {
+	// TODO: Проверить баланс пользователя
+	// TODO: Получить случайный вопрос из базы
+	// TODO: Создать пользователя если не существует (30 монет)
+
+	// Заглушка - показываем пример вопроса
+	questionText := "*Вопрос:*\n\nКакая планета ближайшая к Солнцу?"
+
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Пропустить", "skip"),
+			tgbotapi.NewInlineKeyboardButtonData("Показать ответ", "fail"),
+			tgbotapi.NewInlineKeyboardButtonData("Закончить", "finish"),
+		),
+	)
+
+	return questionText, &keyboard
+}
+
+func handleBalanceCommand(message *tgbotapi.Message) string {
+	// TODO: Получить баланс из базы данных
+	balance := 30 // Заглушка
+
+	return fmt.Sprintf("*Ваш баланс: %d монет\\.*\n\nПополнить баланс вы можете, предложив свой вопрос через соответствующую команду меню\\. В случае, если вопрос пройдет модерацию, он будет опубликован в боте и ваш счет будет пополнен на 10 монет\\. Если вы готовы приобрести монеты за деньги по курсу 1 монета \\= 10 рублей, свяжитесь с администрацией через команду \\/feedback", balance)
+}
+
+func handleRulesCommand(message *tgbotapi.Message) string {
+	return "*Правила*\n\n1\\. При первом контакте с ботом на ваш счет закидывается 30 монет\\.\n2\\. За каждый верно отвеченный вопрос со счета снимается 1 монета\\.\n3\\. Ответом является одно слово на русском языке в именительном падеже единственного числа, если в вопросе не указано иное\\.\n4\\. Если ответом является калька с иностранного языка, имеющая несколько вариантов написания, то правильным будет тот, который указан в Википедии\\.\n5\\. Регистр букв в ответе не имеет значения\\.\n6\\. За каждое нажатие кнопки Показать ответ со счета снимается 1 монета\\.\n7\\. Счет привязан не к пользователю, а к чату\\.\n8\\. Монеты со счета нельзя вернуть\\, но можно отдать другому чату\\, для этого напишите в форму обратной связи\\.\n9\\. Бот поставляется \"как есть\"\\. Администрация не несет ответственности за любые негативные последствия, прямо или косвенно вызванные использованием бота\\."
+}
+
+func handleFeedbackCommand(message *tgbotapi.Message) string {
+	// TODO: Реализовать форму обратной связи
+	return "Напишите ваше сообщение администрации\\. Мы обязательно его прочитаем и ответим\\!"
+}
+
+func handleProposalCommand(message *tgbotapi.Message) string {
+	// TODO: Реализовать форму предложения вопроса
+	return "Предложите свой вопрос для квиза\\! Формат:\n\n*Вопрос:* Ваш вопрос\n*Ответ:* Правильный ответ\n*Комментарий:* Дополнительная информация \\(необязательно\\)"
+}
+
+func handleTextAnswer(message *tgbotapi.Message) (string, *tgbotapi.InlineKeyboardMarkup) {
+	// TODO: Проверить ответ на текущий вопрос
+	// TODO: Сравнить с правильным ответом из базы
+
+	// Заглушка - проверяем ответ "Меркурий"
+	userAnswer := strings.ToLower(strings.TrimSpace(message.Text))
+	correctAnswer := "меркурий"
+
+	if userAnswer == correctAnswer {
+		keyboard := tgbotapi.NewInlineKeyboardMarkup(
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData("Продолжаем", "continue"),
+				tgbotapi.NewInlineKeyboardButtonData("Закончить", "finish"),
+			),
+		)
+		return "*Это правильный ответ\\!*\n\nМеркурий \\- самая близкая к Солнцу планета Солнечной системы\\.", &keyboard
 	}
 
-	return fmt.Sprintf("Привет, %s! 👋\n\nДобро пожаловать в наш бот!\n\nЯ могу:\n• Отвечать на ваши сообщения\n• Обрабатывать команды\n\nПросто напишите мне что-нибудь!", userName)
+	return "Ответ неверный\\. Попробуйте еще раз", nil
 }
 
 func handleCallbackQuery(callback *tgbotapi.CallbackQuery) {
+	// Отвечаем на callback query
+	callbackConfig := tgbotapi.NewCallback(callback.ID, "")
+	if _, err := botInstance.Send(callbackConfig); err != nil {
+		log.Printf("Failed to answer callback query: %v", err)
+	}
+
 	var responseText string
+	var keyboard *tgbotapi.InlineKeyboardMarkup
+
 	switch callback.Data {
-	case "start":
-		responseText = "Вы нажали кнопку старт!"
+	case "skip":
+
+		// TODO: Пропустить вопрос, списать монету, показать следующий
+		responseText, keyboard = handleStartCommand(&tgbotapi.Message{
+			From: callback.From,
+			Chat: callback.Message.Chat,
+		})
+	case "fail":
+		// TODO: Показать правильный ответ, списать монету
+		keyboard = &tgbotapi.InlineKeyboardMarkup{
+			InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{
+				{
+					tgbotapi.NewInlineKeyboardButtonData("Точно!", "continue"),
+					tgbotapi.NewInlineKeyboardButtonData("Ладно, хватит", "finish"),
+				},
+			},
+		}
+		responseText = "*Правильный ответ:*\nМеркурий\n\nМеркурий \\- самая близкая к Солнцу планета Солнечной системы\\."
+	case "continue":
+		// TODO: Показать следующий вопрос
+		responseText, keyboard = handleStartCommand(&tgbotapi.Message{
+			From: callback.From,
+			Chat: callback.Message.Chat,
+		})
 	case "finish":
-		responseText = "Вы нажали кнопку финиш!"
+		responseText = "Приходите завтра\\! Новые интересные вопросы появляются каждый день\\!"
 	default:
 		responseText = fmt.Sprintf("Получен callback: %s", callback.Data)
 	}
 
 	msg := tgbotapi.NewMessage(callback.Message.Chat.ID, responseText)
+	msg.ParseMode = "MarkdownV2"
+
+	if keyboard != nil {
+		msg.ReplyMarkup = keyboard
+	}
+
 	if _, err := botInstance.Send(msg); err != nil {
 		log.Printf("Failed to send callback response: %v", err)
 	}
