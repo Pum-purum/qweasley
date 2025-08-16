@@ -57,6 +57,7 @@ fi
 cp go.mod $BUILD_DIR/
 cp go.sum $BUILD_DIR/ 2>/dev/null || true
 cp cmd/function/main.go $BUILD_DIR/
+cp -r internal/ $BUILD_DIR/internal/
 
 # Создание архива с исходным кодом
 echo "🔧 Создание архива..."
