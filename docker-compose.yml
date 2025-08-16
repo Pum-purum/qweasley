@@ -1,0 +1,13 @@
+services:
+  # Development container for running Go commands
+  go-dev:
+    image: golang:1.21.13-alpine
+    build:
+      context: .
+    working_dir: /app
+    volumes:
+      - .:/app
+    tty: true
+    environment:
+      - CGO_ENABLED=0
+      - PORT=8080

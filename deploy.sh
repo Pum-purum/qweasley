@@ -78,8 +78,7 @@ yc serverless function version create \
     --execution-timeout=$TIMEOUT \
     --source-path=$BUILD_DIR/function.zip \
     --service-account-id=$SERVICE_ACCOUNT_ID \
-    --environment TELEGRAM_TOKEN="$TELEGRAM_TOKEN" \
-    --min-log-level=INFO
+    --environment TELEGRAM_TOKEN="$TELEGRAM_TOKEN"
 
 # Получение URL и настройка webhook
 FUNCTION_ID=$(yc serverless function get $FUNCTION_NAME --folder-id=$FOLDER_ID --format=json | jq -r '.id')
