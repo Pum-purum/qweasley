@@ -7,10 +7,10 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"qweasley/internal/handlers"
 	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"qweasley/internal/handlers"
 )
 
 type Response struct {
