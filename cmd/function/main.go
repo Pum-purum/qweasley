@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"qweasley/internal/database"
 	"qweasley/internal/handlers"
 	"strings"
 
@@ -32,6 +33,11 @@ var (
 func init() {
 	if os.Getenv("LOCAL_TEST") == "true" {
 		loadEnvFile()
+	}
+
+	// Инициализируем базу данных
+	if err := database.InitDatabase(); err != nil {
+		log.Fatal("Failed to initialize database:", err)
 	}
 
 	telegramToken := os.Getenv("TELEGRAM_TOKEN")
@@ -161,10 +167,9 @@ func handleMessage(message *tgbotapi.Message) {
 }
 
 func handleTextAnswer(message *tgbotapi.Message) (string, *tgbotapi.InlineKeyboardMarkup) {
-	// TODO: Проверить ответ на текущий вопрос
-	// TODO: Сравнить с правильным ответом из базы
+	// TODO: Реализовать проверку ответа на текущий вопрос из базы данных
+	// Пока используем заглушку
 
-	// Заглушка - проверяем ответ "Меркурий"
 	userAnswer := strings.ToLower(strings.TrimSpace(message.Text))
 	correctAnswer := "меркурий"
 

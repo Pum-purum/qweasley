@@ -1,13 +1,23 @@
 package handlers
 
-import tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+import (
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"log"
+	"qweasley/internal/repository"
+)
 
 // StartHandler обработчик команды /start
-type StartHandler struct{}
+type StartHandler struct {
+	chatRepo     *repository.ChatRepository
+	questionRepo *repository.QuestionRepository
+}
 
 // NewStartHandler создает новый обработчик команды start
 func NewStartHandler() *StartHandler {
-	return &StartHandler{}
+	return &StartHandler{
+		chatRepo:     repository.NewChatRepository(),
+		questionRepo: repository.NewQuestionRepository(),
+	}
 }
 
 // GetCommand возвращает название команды
@@ -17,18 +27,27 @@ func (h *StartHandler) GetCommand() string {
 
 // Handle обрабатывает команду /start
 func (h *StartHandler) Handle(message *tgbotapi.Message) (string, *tgbotapi.InlineKeyboardMarkup) {
-	// Получаем ID пользователя из сообщения
-	userID := message.From.ID
+	// Получаем или создаем чат пользователя
+	chat, err := h.chatRepo.GetOrCreate(message.Chat.ID, &message.Chat.Title)
+	if err != nil {
+		log.Printf("Failed to get or create chat: %v", err)
+		return "Произошла ошибка при обработке команды", nil
+	}
 
-	// TODO: Проверить баланс пользователя (userID)
-	// TODO: Получить случайный вопрос из базы
-	// TODO: Создать пользователя если не существует (30 монет)
+	// Проверяем баланс
+	if chat.Balance <= 0 {
+		return "У вас закончились монеты\\. Пополните баланс командой /balance и ждем вас снова\\!", nil
+	}
 
-	// Временно используем userID в логе (можно убрать позже)
-	_ = userID
+	// Получаем случайный вопрос
+	question, err := h.questionRepo.GetRandomPublished()
+	if err != nil {
+		log.Printf("Failed to get random question: %v", err)
+		return "К сожалению, не удалось получить вопрос\\. Попробуйте позже\\!", nil
+	}
 
-	// Заглушка - показываем пример вопроса
-	questionText := "*Вопрос:*\n\nКакая планета ближайшая к Солнцу?"
+	// Формируем текст вопроса
+	questionText := "*Вопрос:*\n\n" + question.Text
 
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(

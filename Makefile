@@ -1,4 +1,4 @@
-.PHONY: build dev test clean deps deploy docker help
+.PHONY: build dev test clean deps deploy docker help check-db
 
 .DEFAULT_GOAL := help
 
@@ -28,6 +28,9 @@ deploy: ## ☁️ Deploy to Yandex Cloud
 docker: ## 🐳 Update dependencies with Go 1.21
 	@docker build -t qweasley .
 	@docker run --rm -v $(PWD):/app -w /app qweasley go mod tidy
+
+check-db: ## 🔍 Check database connection
+	LOCAL_TEST=true go run scripts/check_db.go
 
 help: ## 💡 Show this help message
 	@echo "🤖 Available commands:"
