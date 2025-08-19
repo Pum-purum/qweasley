@@ -50,70 +50,12 @@ func main() {
 	tables := []string{"chats", "questions", "pictures", "feedbacks", "reactions"}
 	for _, table := range tables {
 		var count int
-		if err := db.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM %s", table)).Scan(&count); err != nil {
-			fmt.Printf("⚠️  Таблица %s недоступна: %v\n", table, err)
+		if err := db.Raw(fmt.Sprintf("SELECT COUNT(*) FROM %s", table)).Scan(&count).Error; err != nil {
+			fmt.Printf("⚠️ Таблица %s недоступна: %v\n", table, err)
 		} else {
 			fmt.Printf("✅ Таблица %s доступна\n", table)
 		}
 	}
-
-	// Проверяем количество записей в основных таблицах
-	fmt.Println("\n📊 Статистика базы данных:")
-
-	var count int
-
-	// Количество вопросов
-	if err := db.QueryRow("SELECT COUNT(*) FROM questions").Scan(&count); err != nil {
-		fmt.Printf("⚠️  Не удалось получить количество вопросов: %v\n", err)
-	} else {
-		fmt.Printf("   Вопросов: %d\n", count)
-	}
-
-	// Количество опубликованных вопросов
-	if err := db.QueryRow("SELECT COUNT(*) FROM questions WHERE is_published = true").Scan(&count); err != nil {
-		fmt.Printf("⚠️  Не удалось получить количество опубликованных вопросов: %v\n", err)
-	} else {
-		fmt.Printf("   Опубликованных вопросов: %d\n", count)
-	}
-
-	// Количество чатов
-	if err := db.QueryRow("SELECT COUNT(*) FROM chats").Scan(&count); err != nil {
-		fmt.Printf("⚠️  Не удалось получить количество чатов: %v\n", err)
-	} else {
-		fmt.Printf("   Чатов: %d\n", count)
-	}
-
-	// Количество обращений
-	if err := db.QueryRow("SELECT COUNT(*) FROM feedbacks").Scan(&count); err != nil {
-		fmt.Printf("⚠️  Не удалось получить количество обращений: %v\n", err)
-	} else {
-		fmt.Printf("   Обращений: %d\n", count)
-	}
-
-	// Тестируем простой запрос
-	fmt.Println("\n🧪 Тестирование запросов...")
-
-	// Пробуем получить случайный вопрос
-	var questionText string
-	if err := db.QueryRow("SELECT text FROM questions WHERE is_published = true LIMIT 1").Scan(&questionText); err != nil {
-		fmt.Printf("⚠️  Не удалось получить тестовый вопрос: %v\n", err)
-	} else {
-		fmt.Printf("✅ Тестовый запрос выполнен успешно\n")
-		fmt.Printf("   Получен вопрос: %s\n", truncateString(questionText, 50))
-	}
-
-	// Проверяем производительность
-	fmt.Println("\n⚡ Тест производительности...")
-
-	startTime = time.Now()
-	for i := 0; i < 5; i++ {
-		var result int
-		if err := db.QueryRow("SELECT 1").Scan(&result); err != nil {
-			log.Fatalf("❌ Ошибка при тестировании производительности: %v", err)
-		}
-	}
-	avgQueryTime := time.Since(startTime) / 5
-	fmt.Printf("✅ Среднее время запроса: %v\n", avgQueryTime)
 
 	fmt.Println("\n🎉 Проверка соединения с базой данных завершена успешно!")
 }

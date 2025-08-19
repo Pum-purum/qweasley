@@ -13,7 +13,7 @@ fi
 FUNCTION_NAME="goqweasley"
 MEMORY="128m"
 TIMEOUT="2s"
-RUNTIME="golang121"
+RUNTIME="golang123"
 
 echo "🚀 Развертывание бота в Яндекс.Облако..."
 

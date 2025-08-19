@@ -1,14 +1,14 @@
 package repository
 
 import (
-	"database/sql"
+	"gorm.io/gorm"
 	"qweasley/internal/database"
 	"qweasley/internal/models"
 )
 
 // FeedbackRepository репозиторий для работы с обратной связью
 type FeedbackRepository struct {
-	db *sql.DB
+	db *gorm.DB
 }
 
 // NewFeedbackRepository создает новый репозиторий обратной связи

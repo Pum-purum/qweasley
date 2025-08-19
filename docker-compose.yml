@@ -1,7 +1,7 @@
 services:
   # Development container for running Go commands
   go-dev:
-    image: golang:1.21.13-alpine
+    image: golang:1.23-alpine
     build:
       context: .
     working_dir: /app

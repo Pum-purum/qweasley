@@ -1,14 +1,14 @@
 package repository
 
 import (
-	"database/sql"
+	"gorm.io/gorm"
 	"qweasley/internal/database"
 	"qweasley/internal/models"
 )
 
 // QuestionRepository репозиторий для работы с вопросами
 type QuestionRepository struct {
-	db *sql.DB
+	db *gorm.DB
 }
 
 // NewQuestionRepository создает новый репозиторий вопросов

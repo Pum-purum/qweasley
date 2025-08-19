@@ -1,7 +1,6 @@
 package repository
 
 import (
-	"database/sql"
 	"gorm.io/gorm"
 	"qweasley/internal/database"
 	"qweasley/internal/models"
@@ -9,7 +8,7 @@ import (
 
 // ChatRepository репозиторий для работы с чатами
 type ChatRepository struct {
-	db *sql.DB
+	db *gorm.DB
 }
 
 // NewChatRepository создает новый репозиторий чатов
