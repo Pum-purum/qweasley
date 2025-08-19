@@ -9,13 +9,11 @@ import (
 
 // Chat представляет чат пользователя
 type Chat struct {
-	ID         uint           `gorm:"primaryKey;column:id;default:nextval('chats_id_seq')" json:"id"`
-	CreatedAt  time.Time      `gorm:"column:created_at;autoCreateTime" json:"created_at"`
-	UpdatedAt  time.Time      `gorm:"column:updated_at;autoUpdateTime" json:"updated_at"`
-	DeletedAt  gorm.DeletedAt `gorm:"index;column:deleted_at" json:"-"`
-	Balance    int            `gorm:"column:balance;default:0;not null" json:"balance"`
-	TelegramID int64          `gorm:"column:telegram_id;uniqueIndex;not null" json:"telegram_id"`
-	Title      *string        `gorm:"column:title" json:"title"`
+	ID         uint      `gorm:"primaryKey;column:id;default:nextval('chats_id_seq')" json:"id"`
+	CreatedAt  time.Time `gorm:"column:created_at;autoCreateTime" json:"created_at"`
+	Balance    int       `gorm:"column:balance;default:0;not null" json:"balance"`
+	TelegramID int64     `gorm:"column:telegram_id;uniqueIndex;not null" json:"telegram_id"`
+	Title      *string   `gorm:"column:title" json:"title"`
 }
 
 // TableName возвращает имя таблицы для Chat
