@@ -16,5 +16,5 @@ dev: ## Запустить в режиме разработки
 check: ## Запустить в режиме разработки
 	@LOCAL_TEST=true go run scripts/check_db.go
 
-deploy: build ## Развернуть в Яндекс.Облако
+deploy: ## Развернуть в Яндекс.Облако
 	@./deploy.sh

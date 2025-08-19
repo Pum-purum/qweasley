@@ -59,7 +59,6 @@ func InitDatabase() error {
 	config := LoadConfig()
 
 	// Формируем строку подключения
-	// Для Neon.tech используем sslmode=prefer для обхода проблем с сертификатами
 	dsn := fmt.Sprintf("host=%s port=%s dbname=%s sslmode=prefer user=%s password=%s",
 		config.Host, config.Port, config.Name, config.User, config.Password)
 
@@ -109,4 +108,28 @@ func GetDB() *gorm.DB {
 		log.Fatal("Database connection not initialized. Call InitDatabase() first.")
 	}
 	return DB
+}
+
+// CloseDatabase Закрывает соединение с базой данных
+func CloseDatabase() error {
+	if DB == nil {
+		return nil
+	}
+
+	sqlDB, err := DB.DB()
+	if err != nil {
+		return fmt.Errorf("failed to get sql.DB: %w", err)
+	}
+
+	return sqlDB.Close()
+}
+
+// Transaction выполняет операцию в транзакции
+func Transaction(fn func(tx *gorm.DB) error) error {
+	return DB.Transaction(fn)
+}
+
+// WithContext выполняет операцию с контекстом
+func WithContext(ctx context.Context) *gorm.DB {
+	return DB.WithContext(ctx)
 }
