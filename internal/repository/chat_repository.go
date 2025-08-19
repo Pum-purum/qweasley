@@ -18,51 +18,32 @@ func NewChatRepository() *ChatRepository {
 	}
 }
 
-// FindByTelegramID находит чат по Telegram ID
-func (r *ChatRepository) FindByTelegramID(telegramID int64) (*models.Chat, error) {
-	var chat models.Chat
-	err := r.db.Where("telegram_id = ?", telegramID).First(&chat).Error
-	if err != nil {
-		return nil, err
-	}
-	return &chat, nil
-}
-
-// Create создает новый чат
-func (r *ChatRepository) Create(chat *models.Chat) error {
-	return r.db.Create(chat).Error
-}
-
-// Save сохраняет изменения в чате
-func (r *ChatRepository) Save(chat *models.Chat) error {
-	return r.db.Save(chat).Error
-}
-
 // GetOrCreate получает существующий чат или создает новый
 func (r *ChatRepository) GetOrCreate(telegramID int64, title *string) (*models.Chat, error) {
-	chat, err := r.FindByTelegramID(telegramID)
+	var chat models.Chat
+	err := r.db.Where("telegram_id = ?", telegramID).First(&chat).Error
 	if err == nil {
 		// Чат найден, обновляем заголовок если нужно
 		if title != nil && (chat.Title == nil || *chat.Title != *title) {
 			chat.Title = title
-			err = r.Save(chat)
+			err = r.db.Save(&chat).Error
 		}
-		return chat, err
+		return &chat, err
 	}
 
 	// Чат не найден, создаем новый
-	chat = &models.Chat{
+	chat = models.Chat{
 		TelegramID: telegramID,
 		Title:      title,
 		Balance:    30, // Начальный баланс
 	}
 
-	err = r.Create(chat)
+	err = r.db.Create(&chat).Error
 	if err != nil {
 		return nil, err
 	}
 
-	return chat, nil
+	return &chat, nil
 }
 
 // UpdateBalance обновляет баланс чата
