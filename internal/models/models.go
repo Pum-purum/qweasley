@@ -110,7 +110,7 @@ func (r *Reaction) BeforeCreate(tx *gorm.DB) error {
 	// Уникальный индекс для комбинации chat_id и question_id
 	tx.Statement.AddClause(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "chat_id"}, {Name: "question_id"}},
-		DoUpdates: clause.AssignmentColumns([]string{"responsed_at", "skipped_at", "failed_at", "updated_at"}),
+		DoUpdates: clause.AssignmentColumns([]string{"responsed_at", "skipped_at", "failed_at"}),
 	})
 	return nil
 }
