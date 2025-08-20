@@ -33,6 +33,29 @@ if [ -z "$SERVICE_ACCOUNT_ID" ]; then
     exit 1
 fi
 
+# Проверка переменных окружения
+echo "🔍 Проверка переменных окружения..."
+
+REQUIRED_VARS=(
+    "TELEGRAM_TOKEN"
+    "DB_HOST"
+    "DB_PORT"
+    "DB_USER"
+    "DB_PASSWORD"
+    "DB_NAME"
+    "AWS_S3_ENTRYPOINT"
+    "AWS_S3_BUCKET"
+    "ADMIN_CHAT_ID"
+)
+
+for var in "${REQUIRED_VARS[@]}"; do
+    if [ -z "${!var}" ]; then
+        echo "❌ Установите $var в .env файле"
+        exit 1
+    fi
+    echo "   ✅ $var установлена"
+done
+
 # Подготовка кода
 echo "📦 Подготовка кода..."
 BUILD_DIR="./build"
@@ -79,7 +102,17 @@ yc serverless function version create \
     --execution-timeout=$TIMEOUT \
     --source-path=$BUILD_DIR/function.zip \
     --service-account-id=$SERVICE_ACCOUNT_ID \
-    --environment TELEGRAM_TOKEN="$TELEGRAM_TOKEN"
+    --environment TELEGRAM_TOKEN="$TELEGRAM_TOKEN",\
+DB_HOST="$DB_HOST",\
+DB_PORT="$DB_PORT",\
+DB_USER="$DB_USER",\
+DB_PASSWORD="$DB_PASSWORD",\
+DB_NAME="$DB_NAME",\
+SSL_MODE="require",\
+SSL_CERT_PATH="/etc/ssl/certs/ca-certificates.crt",\
+AWS_S3_ENTRYPOINT="$AWS_S3_ENTRYPOINT",\
+AWS_S3_BUCKET="$AWS_S3_BUCKET",\
+ADMIN_CHAT_ID="$ADMIN_CHAT_ID"
 
 # Получение URL и настройка webhook
 FUNCTION_ID=$(yc serverless function get $FUNCTION_NAME --folder-id=$FOLDER_ID --format=json | jq -r '.id')
