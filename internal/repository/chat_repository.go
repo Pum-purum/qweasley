@@ -23,11 +23,6 @@ func (r *ChatRepository) GetOrCreate(telegramID int64, title *string) (*models.C
 	var chat models.Chat
 	err := r.db.Where("telegram_id = ?", telegramID).First(&chat).Error
 	if err == nil {
-		// Чат найден, обновляем заголовок если нужно
-		if title != nil && (chat.Title == nil || *chat.Title != *title) {
-			chat.Title = title
-			err = r.db.Save(&chat).Error
-		}
 		return &chat, err
 	}
 

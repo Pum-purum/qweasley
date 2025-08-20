@@ -17,14 +17,14 @@ type CallbackHandler interface {
 // Registry реестр всех обработчиков
 type Registry struct {
 	commandHandlers  map[string]CommandHandler
-	callbackHandlers map[string]CallbackHandler
+	CallbackHandlers map[string]CallbackHandler
 }
 
 // NewRegistry создает новый реестр обработчиков
 func NewRegistry() *Registry {
 	return &Registry{
 		commandHandlers:  make(map[string]CommandHandler),
-		callbackHandlers: make(map[string]CallbackHandler),
+		CallbackHandlers: make(map[string]CallbackHandler),
 	}
 }
 
@@ -35,7 +35,7 @@ func (r *Registry) RegisterCommand(handler CommandHandler) {
 
 // RegisterCallback регистрирует обработчик callback'а
 func (r *Registry) RegisterCallback(handler CallbackHandler) {
-	r.callbackHandlers[handler.GetCallbackData()] = handler
+	r.CallbackHandlers[handler.GetCallbackData()] = handler
 }
 
 // HandleCommand обрабатывает команду
@@ -48,8 +48,28 @@ func (r *Registry) HandleCommand(command string, message *tgbotapi.Message) (str
 
 // HandleCallback обрабатывает callback
 func (r *Registry) HandleCallback(callbackData string, callback *tgbotapi.CallbackQuery) (string, *tgbotapi.InlineKeyboardMarkup) {
-	if handler, exists := r.callbackHandlers[callbackData]; exists {
+	if handler, exists := r.CallbackHandlers[callbackData]; exists {
 		return handler.Handle(callback)
 	}
 	return "Неизвестный callback", nil
+}
+
+// GetStartHandler возвращает обработчик команды start
+func (r *Registry) GetStartHandler() *StartHandler {
+	if handler, exists := r.commandHandlers["start"]; exists {
+		if startHandler, ok := handler.(*StartHandler); ok {
+			return startHandler
+		}
+	}
+	return nil
+}
+
+// GetFailHandler возвращает обработчик callback'а fail
+func (r *Registry) GetFailHandler() *FailCallback {
+	if handler, exists := r.CallbackHandlers["fail"]; exists {
+		if failHandler, ok := handler.(*FailCallback); ok {
+			return failHandler
+		}
+	}
+	return nil
 }

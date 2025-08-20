@@ -2,8 +2,10 @@ package repository
 
 import (
 	"gorm.io/gorm"
+	"math/rand"
 	"qweasley/internal/database"
 	"qweasley/internal/models"
+	"qweasley/internal/utils"
 )
 
 // QuestionRepository репозиторий для работы с вопросами
@@ -28,5 +30,94 @@ func (r *QuestionRepository) GetRandomPublished() (*models.Question, error) {
 	if err != nil {
 		return nil, err
 	}
+	return &question, nil
+}
+
+// GetByID получает вопрос по ID
+func (r *QuestionRepository) GetByID(id uint) (*models.Question, error) {
+	var question models.Question
+	err := r.db.Preload("Author").
+		Preload("QuestionPicture").
+		Preload("AnswerPicture").
+		Where("id = ?", id).
+		First(&question).Error
+	if err != nil {
+		return nil, err
+	}
+	return &question, nil
+}
+
+// GetQuestion получает вопрос для пользователя, исключая его собственные вопросы и уже отвеченные
+func (r *QuestionRepository) GetQuestion(chat *models.Chat, reactionRepo *ReactionRepository) (*models.Question, error) {
+	// Получаем ID вопросов, на которые пользователь уже реагировал
+	reactedIDs, err := reactionRepo.GetReactedQuestionIDs(chat.ID)
+	if err != nil {
+		utils.LogErrorWithContext(err, "Failed to get reacted question IDs", map[string]interface{}{
+			"chat_id": chat.ID,
+		})
+		return nil, err
+	}
+
+	// Строим запрос для получения вопросов
+	query := r.db.Table("questions").Where("is_published = ?", true).
+		Where("(author_id IS NULL OR author_id != ?)", chat.ID)
+
+	// Исключаем уже отвеченные вопросы
+	if len(reactedIDs) > 0 {
+		query = query.Where("id NOT IN ?", reactedIDs)
+	}
+
+	// Получаем ID доступных вопросов
+	var questionIDs []uint
+	err = query.Pluck("id", &questionIDs).Error
+
+	if err != nil {
+		utils.LogErrorWithContext(err, "Failed to get question IDs", map[string]interface{}{
+			"chat_id":       chat.ID,
+			"reacted_count": len(reactedIDs),
+		})
+		return nil, err
+	}
+
+	// Если нет новых вопросов, пробуем найти пропущенные
+	if len(questionIDs) == 0 {
+		notSkippedIDs, err := reactionRepo.GetNotSkippedQuestionIDs(chat.ID)
+		if err != nil {
+			return nil, err
+		}
+
+		query = r.db.Table("questions").Where("is_published = ?", true).
+			Where("(author_id IS NULL OR author_id != ?)", chat.ID)
+
+		if len(notSkippedIDs) > 0 {
+			query = query.Where("id NOT IN ?", notSkippedIDs)
+		}
+
+		err = query.Pluck("id", &questionIDs).Error
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Если все еще нет вопросов, возвращаем nil
+	if len(questionIDs) == 0 {
+		return nil, nil
+	}
+
+	// Выбираем случайный вопрос из доступных
+	randomIndex := rand.Intn(len(questionIDs))
+	selectedID := questionIDs[randomIndex]
+
+	// Получаем полную информацию о вопросе
+	var question models.Question
+	err = r.db.Preload("Author").
+		Preload("QuestionPicture").
+		Preload("AnswerPicture").
+		Where("id = ?", selectedID).
+		First(&question).Error
+	if err != nil {
+		return nil, err
+	}
+
 	return &question, nil
 }
