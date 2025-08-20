@@ -102,6 +102,7 @@ yc serverless function version create \
     --execution-timeout=$TIMEOUT \
     --source-path=$BUILD_DIR/function.zip \
     --service-account-id=$SERVICE_ACCOUNT_ID \
+    --min-log-level=INFO \
     --environment TELEGRAM_TOKEN="$TELEGRAM_TOKEN",\
 DB_HOST="$DB_HOST",\
 DB_PORT="$DB_PORT",\
