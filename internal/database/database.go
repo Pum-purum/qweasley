@@ -34,7 +34,7 @@ func LoadConfig() *Config {
 		User:     os.Getenv("DB_USER"),
 		Password: os.Getenv("DB_PASSWORD"),
 		Name:     os.Getenv("DB_NAME"),
-		SSLMode:  getEnv("SSL_MODE", "require"),
+		SSLMode:  os.Getenv("SSL_MODE"),
 		CertPath: os.Getenv("SSL_CERT_PATH"),
 	}
 
@@ -69,7 +69,7 @@ func InitDatabase() error {
 
 	// Настройки GORM
 	gormConfig := &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
+		Logger: logger.Default.LogMode(logger.Error),
 		NowFunc: func() time.Time {
 			return time.Now().UTC()
 		},
@@ -103,7 +103,6 @@ func InitDatabase() error {
 	// Сохраняем подключение
 	DB = gormDB
 
-	log.Println("Database connection established successfully")
 	return nil
 }
 

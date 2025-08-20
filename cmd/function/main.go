@@ -34,6 +34,22 @@ var (
 	sessionMgr  *handlers.SessionManager
 )
 
+// logInfo логирует сообщение с уровнем INFO в JSON формате
+func logInfo(message string) {
+	logEntry := map[string]interface{}{
+		"level":   "INFO",
+		"message": message,
+	}
+
+	jsonData, err := json.Marshal(logEntry)
+	if err != nil {
+		log.Printf("Failed to marshal log entry: %v", err)
+		return
+	}
+
+	log.Printf("%s", string(jsonData))
+}
+
 func init() {
 	if os.Getenv("LOCAL_TEST") == "true" {
 		loadEnvFile()
@@ -120,7 +136,6 @@ func Handler(ctx context.Context, request json.RawMessage) (*Response, error) {
 	// Пробуем распарсить как обертку Yandex Cloud
 	var cloudRequest YandexCloudRequest
 	if err := json.Unmarshal(request, &cloudRequest); err != nil {
-		// Прямые данные Telegram (локальное тестирование)
 		bodyData = []byte(request)
 	} else {
 		// Извлекаем тело из обертки Yandex Cloud
@@ -131,18 +146,18 @@ func Handler(ctx context.Context, request json.RawMessage) (*Response, error) {
 		return &Response{StatusCode: 400, Body: "Empty body"}, nil
 	}
 
+	logInfo(string(bodyData))
+
 	var update tgbotapi.Update
 	if err := json.Unmarshal(bodyData, &update); err != nil {
 		return &Response{StatusCode: 400, Body: "Bad request"}, nil
 	}
 
-	// Обрабатываем разные типы обновлений
 	if update.Message != nil {
 		handleMessage(update.Message)
 	} else if update.CallbackQuery != nil {
 		handleCallbackQuery(update.CallbackQuery)
 	}
-
 	return &Response{StatusCode: 200, Body: "OK"}, nil
 }
 
