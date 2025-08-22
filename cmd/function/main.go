@@ -34,11 +34,12 @@ var (
 	sessionMgr  *handlers.SessionManager
 )
 
-// logInfo логирует сообщение с уровнем INFO в JSON формате
-func logInfo(message string) {
+// cloudLog логирует сообщение с уровнем INFO в JSON формате
+func cloudLog(message string) {
 	logEntry := map[string]interface{}{
-		"level":   "INFO",
-		"message": message,
+		"level":        "INFO",
+		"message":      message,
+		"stream_name ": "body",
 	}
 
 	jsonData, err := json.Marshal(logEntry)
@@ -47,7 +48,7 @@ func logInfo(message string) {
 		return
 	}
 
-	log.Printf("%s", string(jsonData))
+	log.Print(string(jsonData))
 }
 
 func init() {
@@ -146,7 +147,7 @@ func Handler(ctx context.Context, request json.RawMessage) (*Response, error) {
 		return &Response{StatusCode: 400, Body: "Empty body"}, nil
 	}
 
-	logInfo(string(bodyData))
+	cloudLog(string(bodyData))
 
 	var update tgbotapi.Update
 	if err := json.Unmarshal(bodyData, &update); err != nil {

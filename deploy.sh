@@ -53,7 +53,6 @@ for var in "${REQUIRED_VARS[@]}"; do
         echo "❌ Установите $var в .env файле"
         exit 1
     fi
-    echo "   ✅ $var установлена"
 done
 
 # Подготовка кода
@@ -103,7 +102,8 @@ yc serverless function version create \
     --source-path=$BUILD_DIR/function.zip \
     --service-account-id=$SERVICE_ACCOUNT_ID \
     --min-log-level=INFO \
-    --environment TELEGRAM_TOKEN="$TELEGRAM_TOKEN",\
+    --environment \
+TELEGRAM_TOKEN="$TELEGRAM_TOKEN",\
 DB_HOST="$DB_HOST",\
 DB_PORT="$DB_PORT",\
 DB_USER="$DB_USER",\
