@@ -30,7 +30,6 @@ var (
 	registry    *handlers.Registry
 )
 
-// cloudLog логирует сообщение без использования сторонних библиотек
 func cloudLog(message []byte) {
 	parsed := make(map[string]interface{})
 	if err := json.Unmarshal(message, &parsed); err != nil {
@@ -272,6 +271,12 @@ func handleCallbackQuery(callback *tgbotapi.CallbackQuery) {
 		return
 	}
 
+	// Специальная обработка для continue callback с возможностью отправки фото
+	if callback.Data == "continue" {
+		handleContinueCallback(callback)
+		return
+	}
+
 	responseText, keyboard := registry.HandleCallback(callback.Data, callback)
 
 	msg := tgbotapi.NewMessage(callback.Message.Chat.ID, responseText)
@@ -304,6 +309,45 @@ func handleFailCallback(callback *tgbotapi.CallbackQuery) {
 	responseText, keyboard := registry.HandleCallback("fail", callback)
 
 	msg := tgbotapi.NewMessage(callback.Message.Chat.ID, responseText)
+	msg.ParseMode = "MarkdownV2"
+
+	if keyboard != nil {
+		msg.ReplyMarkup = keyboard
+	}
+
+	if _, err := botInstance.Send(msg); err != nil {
+		fmt.Printf("Failed to send message: %v\n", err)
+	}
+}
+
+func handleContinueCallback(callback *tgbotapi.CallbackQuery) {
+	// Получаем обработчик старта
+	startHandler := registry.GetStartHandler()
+	if startHandler == nil {
+		fmt.Printf("Start handler not found\n")
+		return
+	}
+
+	// Создаем сообщение из callback для передачи в обработчик
+	message := &tgbotapi.Message{
+		From: callback.From,
+		Chat: callback.Message.Chat,
+	}
+
+	// Пытаемся отправить фото с вопросом
+	photoConfig, err := startHandler.HandleWithPhoto(message)
+	if err == nil && photoConfig != nil {
+		// Отправляем фото с вопросом
+		if _, err := botInstance.Send(*photoConfig); err != nil {
+			fmt.Printf("Failed to send photo: %v\n", err)
+		}
+		return
+	}
+
+	// Если фото нет или произошла ошибка, отправляем обычное сообщение
+	responseText, keyboard := startHandler.Handle(message)
+
+	msg := tgbotapi.NewMessage(message.Chat.ID, responseText)
 	msg.ParseMode = "MarkdownV2"
 
 	if keyboard != nil {
