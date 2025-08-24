@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"io"
 	"log"
 	"net/http"
@@ -11,8 +12,6 @@ import (
 	"qweasley/internal/database"
 	"qweasley/internal/handlers"
 	"strings"
-
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 type Response struct {
@@ -268,7 +267,7 @@ func handleCallbackQuery(callback *tgbotapi.CallbackQuery) {
 	}
 
 	// Специальная обработка для fail callback с возможностью отправки фото
-	if callback.Data == "fail" {
+	if strings.HasPrefix(callback.Data, "fail:") {
 		handleFailCallback(callback)
 		return
 	}
