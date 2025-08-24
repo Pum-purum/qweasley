@@ -1,6 +1,9 @@
 package handlers
 
-import tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+import (
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"strings"
+)
 
 // CommandHandler интерфейс для всех обработчиков команд
 type CommandHandler interface {
@@ -48,7 +51,11 @@ func (r *Registry) HandleCommand(command string, message *tgbotapi.Message) (str
 
 // HandleCallback обрабатывает callback
 func (r *Registry) HandleCallback(callbackData string, callback *tgbotapi.CallbackQuery) (string, *tgbotapi.InlineKeyboardMarkup) {
-	if handler, exists := r.CallbackHandlers[callbackData]; exists {
+	// Парсим callback данные (формат: "action:questionID")
+	parts := strings.Split(callbackData, ":")
+	action := parts[0]
+
+	if handler, exists := r.CallbackHandlers[action]; exists {
 		return handler.Handle(callback)
 	}
 	return "Неизвестный callback", nil
@@ -72,4 +79,14 @@ func (r *Registry) GetFailHandler() *FailCallback {
 		}
 	}
 	return nil
+}
+
+// HandleTextMessage обрабатывает текстовое сообщение
+func (r *Registry) HandleTextMessage(message *tgbotapi.Message) (string, *tgbotapi.InlineKeyboardMarkup) {
+	// Получаем обработчик start для обработки текстовых ответов
+	startHandler := r.GetStartHandler()
+	if startHandler != nil {
+		return startHandler.HandleTextResponse(message)
+	}
+	return "Начните квиз командой /start", nil
 }

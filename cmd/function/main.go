@@ -10,8 +10,6 @@ import (
 	"os"
 	"qweasley/internal/database"
 	"qweasley/internal/handlers"
-	"qweasley/internal/repository"
-	"qweasley/internal/utils"
 	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -31,24 +29,28 @@ type YandexCloudRequest struct {
 var (
 	botInstance *tgbotapi.BotAPI
 	registry    *handlers.Registry
-	sessionMgr  *handlers.SessionManager
 )
 
-// cloudLog логирует сообщение с уровнем INFO в JSON формате
-func cloudLog(message string) {
-	logEntry := map[string]interface{}{
-		"level":        "INFO",
-		"message":      message,
-		"stream_name ": "body",
+// cloudLog логирует сообщение без использования сторонних библиотек
+func cloudLog(message []byte) {
+	parsed := make(map[string]interface{})
+	if err := json.Unmarshal(message, &parsed); err != nil {
+		return
 	}
-
+	logEntry := map[string]interface{}{
+		"level":        "ERROR",
+		"message":      "body",
+		"stream_name":  "body",
+		"json-payload": parsed,
+	}
 	jsonData, err := json.Marshal(logEntry)
 	if err != nil {
 		log.Printf("Failed to marshal log entry: %v", err)
 		return
 	}
 
-	log.Print(string(jsonData))
+	// Выводим в stdout в JSON формате
+	fmt.Println(string(jsonData))
 }
 
 func init() {
@@ -72,9 +74,6 @@ func init() {
 		log.Fatal("Failed to create bot:", err)
 	}
 
-	// Инициализируем менеджер сессий
-	sessionMgr = handlers.NewSessionManager()
-
 	// Инициализируем реестр обработчиков
 	initHandlers()
 }
@@ -83,7 +82,7 @@ func initHandlers() {
 	registry = handlers.NewRegistry()
 
 	// Создаем обработчики команд
-	startHandler := handlers.NewStartHandler(sessionMgr)
+	startHandler := handlers.NewStartHandler()
 	balanceHandler := handlers.NewBalanceHandler()
 	rulesHandler := handlers.NewRulesHandler()
 	feedbackHandler := handlers.NewFeedbackHandler()
@@ -147,7 +146,7 @@ func Handler(ctx context.Context, request json.RawMessage) (*Response, error) {
 		return &Response{StatusCode: 400, Body: "Empty body"}, nil
 	}
 
-	cloudLog(string(bodyData))
+	cloudLog(bodyData)
 
 	var update tgbotapi.Update
 	if err := json.Unmarshal(bodyData, &update); err != nil {
@@ -178,11 +177,11 @@ func handleMessage(message *tgbotapi.Message) {
 		}
 
 		if _, err := botInstance.Send(msg); err != nil {
-			log.Printf("Failed to send message: %v", err)
+			fmt.Printf("Failed to send message: %v\n", err)
 		}
 	} else {
 		// Обработка текстовых ответов на вопросы
-		responseText, keyboard := handleTextAnswer(message)
+		responseText, keyboard := registry.HandleTextMessage(message)
 
 		msg := tgbotapi.NewMessage(message.Chat.ID, responseText)
 		msg.ParseMode = "MarkdownV2"
@@ -196,7 +195,7 @@ func handleMessage(message *tgbotapi.Message) {
 		}
 
 		if _, err := botInstance.Send(msg); err != nil {
-			log.Printf("Failed to send message: %v", err)
+			fmt.Printf("Failed to send message: %v\n", err)
 		}
 	}
 }
@@ -205,7 +204,7 @@ func handleStartCommand(message *tgbotapi.Message) {
 	// Получаем обработчик старта
 	startHandler := registry.GetStartHandler()
 	if startHandler == nil {
-		log.Printf("Start handler not found")
+		fmt.Printf("Start handler not found\n")
 		return
 	}
 
@@ -214,7 +213,7 @@ func handleStartCommand(message *tgbotapi.Message) {
 	if err == nil && photoConfig != nil {
 		// Отправляем фото с вопросом
 		if _, err := botInstance.Send(*photoConfig); err != nil {
-			log.Printf("Failed to send photo: %v", err)
+			fmt.Printf("Failed to send photo: %v\n", err)
 		}
 		return
 	}
@@ -230,122 +229,8 @@ func handleStartCommand(message *tgbotapi.Message) {
 	}
 
 	if _, err := botInstance.Send(msg); err != nil {
-		log.Printf("Failed to send message: %v", err)
+		fmt.Printf("Failed to send message: %v\n", err)
 	}
-}
-
-func handleTextAnswer(message *tgbotapi.Message) (string, *tgbotapi.InlineKeyboardMarkup) {
-	// Получаем сессию пользователя
-	session := sessionMgr.GetSession(message.Chat.ID)
-	if session == nil {
-		return "Сессия истекла\\. Начните заново командой /start", nil
-	}
-
-	// Получаем вопрос из базы данных
-	questionRepo := repository.NewQuestionRepository()
-	question, err := questionRepo.GetByID(session.QuestionID)
-	if err != nil {
-		utils.LogErrorWithContext(err, "Failed to get question for text answer", map[string]interface{}{
-			"question_id": session.QuestionID,
-			"chat_id":     message.Chat.ID,
-			"user_answer": message.Text,
-		})
-		return "Произошла ошибка при проверке ответа", nil
-	}
-
-	// Проверяем ответ
-	userAnswer := strings.ToLower(strings.TrimSpace(message.Text))
-	correctAnswer := strings.ToLower(strings.TrimSpace(question.Answer))
-
-	if userAnswer == correctAnswer {
-		// Получаем чат пользователя
-		chatRepo := repository.NewChatRepository()
-		reactionRepo := repository.NewReactionRepository()
-
-		chat, err := chatRepo.GetOrCreate(message.Chat.ID, &message.Chat.Title)
-		if err != nil {
-			utils.LogErrorWithContext(err, "Failed to get or create chat for text answer", map[string]interface{}{
-				"chat_id":     message.Chat.ID,
-				"question_id": session.QuestionID,
-			})
-			return "Произошла ошибка при обработке ответа", nil
-		}
-
-		// Создаем реакцию "response"
-		err = reactionRepo.CreateOrUpdateReaction(chat.ID, session.QuestionID, "response")
-		if err != nil {
-			utils.LogErrorWithContext(err, "Failed to create response reaction", map[string]interface{}{
-				"chat_id":     chat.ID,
-				"question_id": session.QuestionID,
-			})
-			return "Произошла ошибка при обработке ответа", nil
-		}
-
-		// Уменьшаем баланс
-		err = chatRepo.DecreaseBalance(chat.ID)
-		if err != nil {
-			utils.LogErrorWithContext(err, "Failed to decrease balance for text answer", map[string]interface{}{
-				"chat_id":     chat.ID,
-				"question_id": session.QuestionID,
-			})
-			return "Произошла ошибка при обработке ответа", nil
-		}
-
-		// Проверяем наличие картинки ответа
-		if question.AnswerPicture != nil && question.AnswerPicture.Path != nil {
-			// Формируем URL картинки
-			photoURL, err := getPictureURL(*question.AnswerPicture.Path)
-			if err != nil {
-				log.Printf("Failed to get picture URL: %v", err)
-				// Продолжаем без картинки
-			} else {
-
-				// Формируем ответ
-				caption := "*Это правильный ответ\\!*"
-				if question.Comment != nil {
-					caption += "\n\n" + escapeMarkdown(*question.Comment)
-				}
-
-				// Создаем конфигурацию фото
-				photoConfig := tgbotapi.NewPhoto(message.Chat.ID, tgbotapi.FileURL(photoURL))
-				photoConfig.Caption = caption
-				photoConfig.ParseMode = "MarkdownV2"
-
-				// Добавляем клавиатуру
-				keyboard := tgbotapi.NewInlineKeyboardMarkup(
-					tgbotapi.NewInlineKeyboardRow(
-						tgbotapi.NewInlineKeyboardButtonData("Продолжаем", "continue"),
-						tgbotapi.NewInlineKeyboardButtonData("Закончить", "finish"),
-					),
-				)
-				photoConfig.ReplyMarkup = keyboard
-
-				// Отправляем фото
-				if _, err := botInstance.Send(photoConfig); err != nil {
-					log.Printf("Failed to send photo: %v", err)
-				}
-
-				// Возвращаем пустой ответ, так как фото уже отправлено
-				return "", nil
-			}
-		}
-
-		// Формируем ответ без фото
-		responseText := "*Это правильный ответ\\!*"
-		if question.Comment != nil {
-			responseText += "\n\n" + escapeMarkdown(*question.Comment)
-		}
-
-		keyboard := tgbotapi.NewInlineKeyboardMarkup(
-			tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.NewInlineKeyboardButtonData("Продолжаем", "continue"),
-				tgbotapi.NewInlineKeyboardButtonData("Закончить", "finish"),
-			),
-		)
-		return responseText, &keyboard
-	}
-
-	return "Ответ неверный\\. Попробуйте еще раз", nil
 }
 
 // getPictureURL формирует URL картинки
@@ -379,7 +264,7 @@ func handleCallbackQuery(callback *tgbotapi.CallbackQuery) {
 	// Отвечаем на callback query
 	callbackConfig := tgbotapi.NewCallback(callback.ID, "")
 	if _, err := botInstance.Send(callbackConfig); err != nil {
-		log.Printf("Failed to answer callback query: %v", err)
+		fmt.Printf("Failed to answer callback query: %v\n", err)
 	}
 
 	// Специальная обработка для fail callback с возможностью отправки фото
@@ -398,7 +283,7 @@ func handleCallbackQuery(callback *tgbotapi.CallbackQuery) {
 	}
 
 	if _, err := botInstance.Send(msg); err != nil {
-		log.Printf("Failed to send callback response: %v", err)
+		fmt.Printf("Failed to send callback response: %v\n", err)
 	}
 }
 
@@ -410,7 +295,7 @@ func handleFailCallback(callback *tgbotapi.CallbackQuery) {
 		if err == nil && photoConfig != nil {
 			// Отправляем фото с ответом
 			if _, err := botInstance.Send(*photoConfig); err != nil {
-				log.Printf("Failed to send photo: %v", err)
+				fmt.Printf("Failed to send photo: %v\n", err)
 			}
 			return
 		}
@@ -427,7 +312,7 @@ func handleFailCallback(callback *tgbotapi.CallbackQuery) {
 	}
 
 	if _, err := botInstance.Send(msg); err != nil {
-		log.Printf("Failed to send message: %v", err)
+		fmt.Printf("Failed to send message: %v\n", err)
 	}
 }
 
@@ -469,6 +354,6 @@ func startLocalServer() {
 		}
 	})
 
-	log.Printf("Local server starting on port %s", port)
+	fmt.Printf("Local server starting on port %s\n", port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
 }

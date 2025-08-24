@@ -1,11 +1,11 @@
 package repository
 
 import (
+	"fmt"
 	"gorm.io/gorm"
 	"math/rand"
 	"qweasley/internal/database"
 	"qweasley/internal/models"
-	"qweasley/internal/utils"
 )
 
 // QuestionRepository репозиторий для работы с вопросами
@@ -52,9 +52,7 @@ func (r *QuestionRepository) GetQuestion(chat *models.Chat, reactionRepo *Reacti
 	// Получаем ID вопросов, на которые пользователь уже реагировал
 	reactedIDs, err := reactionRepo.GetReactedQuestionIDs(chat.ID)
 	if err != nil {
-		utils.LogErrorWithContext(err, "Failed to get reacted question IDs", map[string]interface{}{
-			"chat_id": chat.ID,
-		})
+		fmt.Printf("Failed to get reacted question IDs: %v (chat_id: %d)\n", err, chat.ID)
 		return nil, err
 	}
 
@@ -72,10 +70,7 @@ func (r *QuestionRepository) GetQuestion(chat *models.Chat, reactionRepo *Reacti
 	err = query.Pluck("id", &questionIDs).Error
 
 	if err != nil {
-		utils.LogErrorWithContext(err, "Failed to get question IDs", map[string]interface{}{
-			"chat_id":       chat.ID,
-			"reacted_count": len(reactedIDs),
-		})
+		fmt.Printf("Failed to get question IDs: %v (chat_id: %d, reacted_count: %d)\n", err, chat.ID, len(reactedIDs))
 		return nil, err
 	}
 

@@ -3,7 +3,6 @@ package handlers
 import (
 	"fmt"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"log"
 	"qweasley/internal/repository"
 )
 
@@ -29,7 +28,7 @@ func (h *BalanceHandler) Handle(message *tgbotapi.Message) (string, *tgbotapi.In
 	// Получаем или создаем чат пользователя
 	chat, err := h.chatRepo.GetOrCreate(message.Chat.ID, &message.Chat.Title)
 	if err != nil {
-		log.Printf("Failed to get or create chat: %v", err)
+		fmt.Printf("Failed to get or create chat: %v\n", err)
 		return "Произошла ошибка при получении баланса", nil
 	}
 

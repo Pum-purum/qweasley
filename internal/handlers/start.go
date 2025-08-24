@@ -6,7 +6,6 @@ import (
 	"os"
 	"qweasley/internal/models"
 	"qweasley/internal/repository"
-	"qweasley/internal/utils"
 	"strings"
 )
 
@@ -15,16 +14,14 @@ type StartHandler struct {
 	chatRepo     *repository.ChatRepository
 	questionRepo *repository.QuestionRepository
 	reactionRepo *repository.ReactionRepository
-	sessionMgr   *SessionManager
 }
 
 // NewStartHandler создает новый обработчик команды start
-func NewStartHandler(sessionMgr *SessionManager) *StartHandler {
+func NewStartHandler() *StartHandler {
 	return &StartHandler{
 		chatRepo:     repository.NewChatRepository(),
 		questionRepo: repository.NewQuestionRepository(),
 		reactionRepo: repository.NewReactionRepository(),
-		sessionMgr:   sessionMgr,
 	}
 }
 
@@ -38,10 +35,7 @@ func (h *StartHandler) Handle(message *tgbotapi.Message) (string, *tgbotapi.Inli
 	// Получаем или создаем чат пользователя
 	chat, err := h.chatRepo.GetOrCreate(message.Chat.ID, &message.Chat.Title)
 	if err != nil {
-		utils.LogErrorWithContext(err, "Failed to get or create chat", map[string]interface{}{
-			"chat_id": message.Chat.ID,
-			"title":   message.Chat.Title,
-		})
+		fmt.Printf("Failed to get or create chat: %v (chat_id: %d, title: %s)\n", err, message.Chat.ID, message.Chat.Title)
 		return "Произошла ошибка при обработке команды", nil
 	}
 
@@ -53,10 +47,7 @@ func (h *StartHandler) Handle(message *tgbotapi.Message) (string, *tgbotapi.Inli
 	// Получаем вопрос для пользователя
 	question, err := h.questionRepo.GetQuestion(chat, h.reactionRepo)
 	if err != nil {
-		utils.LogErrorWithContext(err, "Failed to get question", map[string]interface{}{
-			"chat_id": chat.ID,
-			"balance": chat.Balance,
-		})
+		fmt.Printf("Failed to get question: %v (chat_id: %d, balance: %d)\n", err, chat.ID, chat.Balance)
 		return "К сожалению, не удалось получить вопрос\\. Попробуйте позже\\!", nil
 	}
 
@@ -65,17 +56,14 @@ func (h *StartHandler) Handle(message *tgbotapi.Message) (string, *tgbotapi.Inli
 		return "Уоу, вы ответили на все вопросы\\! Приходите завтра\\! Новые интересные вопросы появляются каждый день\\!", nil
 	}
 
-	// Сохраняем сессию с текущим вопросом
-	h.sessionMgr.SetSession(message.Chat.ID, question.ID)
-
 	// Формируем текст вопроса
 	questionText := h.formatQuestionText(question)
 
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("Пропустить", "skip"),
-			tgbotapi.NewInlineKeyboardButtonData("Показать ответ", "fail"),
-			tgbotapi.NewInlineKeyboardButtonData("Закончить", "finish"),
+			tgbotapi.NewInlineKeyboardButtonData("Пропустить", fmt.Sprintf("skip:%d", question.ID)),
+			tgbotapi.NewInlineKeyboardButtonData("Показать ответ", fmt.Sprintf("fail:%d", question.ID)),
+			tgbotapi.NewInlineKeyboardButtonData("Закончить", fmt.Sprintf("finish:%d", question.ID)),
 		),
 	)
 
@@ -87,10 +75,7 @@ func (h *StartHandler) HandleWithPhoto(message *tgbotapi.Message) (*tgbotapi.Pho
 	// Получаем или создаем чат пользователя
 	chat, err := h.chatRepo.GetOrCreate(message.Chat.ID, &message.Chat.Title)
 	if err != nil {
-		utils.LogErrorWithContext(err, "Failed to get or create chat", map[string]interface{}{
-			"chat_id": message.Chat.ID,
-			"title":   message.Chat.Title,
-		})
+		fmt.Printf("Failed to get or create chat: %v (chat_id: %d, title: %s)\n", err, message.Chat.ID, message.Chat.Title)
 		return nil, err
 	}
 
@@ -102,10 +87,7 @@ func (h *StartHandler) HandleWithPhoto(message *tgbotapi.Message) (*tgbotapi.Pho
 	// Получаем вопрос для пользователя
 	question, err := h.questionRepo.GetQuestion(chat, h.reactionRepo)
 	if err != nil {
-		utils.LogErrorWithContext(err, "Failed to get question", map[string]interface{}{
-			"chat_id": chat.ID,
-			"balance": chat.Balance,
-		})
+		fmt.Printf("Failed to get question: %v (chat_id: %d, balance: %d)\n", err, chat.ID, chat.Balance)
 		return nil, err
 	}
 
@@ -114,17 +96,12 @@ func (h *StartHandler) HandleWithPhoto(message *tgbotapi.Message) (*tgbotapi.Pho
 		return nil, fmt.Errorf("no questions available")
 	}
 
-	// Сохраняем сессию с текущим вопросом
-	h.sessionMgr.SetSession(message.Chat.ID, question.ID)
-
 	// Проверяем наличие картинки вопроса
 	if question.QuestionPicture != nil && question.QuestionPicture.Path != nil {
 		// Формируем URL картинки
 		photoURL, err := h.getPictureURL(*question.QuestionPicture.Path)
 		if err != nil {
-			utils.LogErrorWithContext(err, "Failed to get picture URL", map[string]interface{}{
-				"path": *question.QuestionPicture.Path,
-			})
+			fmt.Printf("Failed to get picture URL: %v (path: %s)\n", err, *question.QuestionPicture.Path)
 			return nil, err
 		}
 
@@ -139,9 +116,9 @@ func (h *StartHandler) HandleWithPhoto(message *tgbotapi.Message) (*tgbotapi.Pho
 		// Добавляем клавиатуру
 		keyboard := tgbotapi.NewInlineKeyboardMarkup(
 			tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.NewInlineKeyboardButtonData("Пропустить", "skip"),
-				tgbotapi.NewInlineKeyboardButtonData("Показать ответ", "fail"),
-				tgbotapi.NewInlineKeyboardButtonData("Закончить", "finish"),
+				tgbotapi.NewInlineKeyboardButtonData("Пропустить", fmt.Sprintf("skip:%d", question.ID)),
+				tgbotapi.NewInlineKeyboardButtonData("Показать ответ", fmt.Sprintf("fail:%d", question.ID)),
+				tgbotapi.NewInlineKeyboardButtonData("Закончить", fmt.Sprintf("finish:%d", question.ID)),
 			),
 		)
 		photoConfig.ReplyMarkup = keyboard
@@ -191,4 +168,62 @@ func (h *StartHandler) escapeMarkdown(text string) string {
 	}
 
 	return text
+}
+
+// HandleTextResponse обрабатывает текстовый ответ на вопрос
+func (h *StartHandler) HandleTextResponse(message *tgbotapi.Message) (string, *tgbotapi.InlineKeyboardMarkup) {
+	// Получаем или создаем чат пользователя
+	chat, err := h.chatRepo.GetOrCreate(message.Chat.ID, &message.Chat.Title)
+	if err != nil {
+		fmt.Printf("Failed to get or create chat for text response: %v (chat_id: %d)\n", err, message.Chat.ID)
+		return "Произошла ошибка при обработке ответа", nil
+	}
+
+	// Получаем активный вопрос для пользователя (без реакции)
+	question, err := h.questionRepo.GetQuestion(chat, h.reactionRepo)
+	if err != nil {
+		fmt.Printf("Failed to get question for text answer: %v (chat_id: %d, user_answer: %s)\n", err, message.Chat.ID, message.Text)
+		return "Произошла ошибка при проверке ответа", nil
+	}
+
+	// Если вопросов больше нет
+	if question == nil {
+		return "Уоу, вы ответили на все вопросы\\! Приходите завтра\\!", nil
+	}
+
+	// Проверяем ответ
+	userAnswer := strings.ToLower(strings.TrimSpace(message.Text))
+	correctAnswer := strings.ToLower(strings.TrimSpace(question.Answer))
+
+	if userAnswer == correctAnswer {
+		// Создаем реакцию "response"
+		err = h.reactionRepo.CreateOrUpdateReaction(chat.ID, question.ID, "response")
+		if err != nil {
+			fmt.Printf("Failed to create response reaction: %v (chat_id: %d, question_id: %d)\n", err, chat.ID, question.ID)
+			return "Произошла ошибка при обработке ответа", nil
+		}
+
+		// Уменьшаем баланс
+		err = h.chatRepo.DecreaseBalance(chat.ID)
+		if err != nil {
+			fmt.Printf("Failed to decrease balance for text answer: %v (chat_id: %d, question_id: %d)\n", err, chat.ID, question.ID)
+			return "Произошла ошибка при обработке ответа", nil
+		}
+
+		// Формируем ответ
+		responseText := "*Это правильный ответ\\!*"
+		if question.Comment != nil {
+			responseText += "\n\n" + h.escapeMarkdown(*question.Comment)
+		}
+
+		keyboard := tgbotapi.NewInlineKeyboardMarkup(
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData("Продолжаем", "continue"),
+				tgbotapi.NewInlineKeyboardButtonData("Закончить", fmt.Sprintf("finish:%d", question.ID)),
+			),
+		)
+		return responseText, &keyboard
+	}
+
+	return "Ответ неверный\\. Попробуйте еще раз", nil
 }

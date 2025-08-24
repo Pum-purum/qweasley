@@ -1,8 +1,8 @@
 package handlers
 
 import (
+	"fmt"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"log"
 	"qweasley/internal/models"
 	"qweasley/internal/repository"
 )
@@ -31,7 +31,7 @@ func (h *FeedbackHandler) Handle(message *tgbotapi.Message) (string, *tgbotapi.I
 	// Получаем или создаем чат пользователя
 	chat, err := h.chatRepo.GetOrCreate(message.Chat.ID, &message.Chat.Title)
 	if err != nil {
-		log.Printf("Failed to get or create chat: %v", err)
+		fmt.Printf("Failed to get or create chat: %v\n", err)
 		return "Произошла ошибка при обработке команды", nil
 	}
 
@@ -44,7 +44,7 @@ func (h *FeedbackHandler) Handle(message *tgbotapi.Message) (string, *tgbotapi.I
 
 		err = h.feedbackRepo.Create(feedback)
 		if err != nil {
-			log.Printf("Failed to create feedback: %v", err)
+			fmt.Printf("Failed to create feedback: %v\n", err)
 			return "Произошла ошибка при сохранении сообщения", nil
 		}
 

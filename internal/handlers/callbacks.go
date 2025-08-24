@@ -5,7 +5,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"os"
 	"qweasley/internal/repository"
-	"qweasley/internal/utils"
+	"strconv"
 	"strings"
 )
 
@@ -14,6 +14,7 @@ type SkipCallback struct {
 	startHandler *StartHandler
 	chatRepo     *repository.ChatRepository
 	reactionRepo *repository.ReactionRepository
+	questionRepo *repository.QuestionRepository
 }
 
 // NewSkipCallback создает новый обработчик callback'а skip
@@ -22,6 +23,7 @@ func NewSkipCallback(startHandler *StartHandler) *SkipCallback {
 		startHandler: startHandler,
 		chatRepo:     repository.NewChatRepository(),
 		reactionRepo: repository.NewReactionRepository(),
+		questionRepo: repository.NewQuestionRepository(),
 	}
 }
 
@@ -32,39 +34,43 @@ func (h *SkipCallback) GetCallbackData() string {
 
 // Handle обрабатывает callback "skip"
 func (h *SkipCallback) Handle(callback *tgbotapi.CallbackQuery) (string, *tgbotapi.InlineKeyboardMarkup) {
-	// Получаем сессию пользователя
-	session := h.startHandler.sessionMgr.GetSession(callback.Message.Chat.ID)
-	if session == nil {
-		return "Сессия истекла\\. Начните заново командой /start", nil
+	// Парсим ID вопроса из callback данных
+	parts := strings.Split(callback.Data, ":")
+	if len(parts) != 2 {
+		return "Ошибка обработки команды", nil
+	}
+
+	questionID, err := strconv.ParseUint(parts[1], 10, 32)
+	if err != nil {
+		fmt.Printf("Failed to parse question ID in skip callback: %v (callback_data: %s)\n", err, callback.Data)
+		return "Ошибка обработки команды", nil
 	}
 
 	// Получаем чат пользователя
 	chat, err := h.chatRepo.GetOrCreate(callback.Message.Chat.ID, &callback.Message.Chat.Title)
 	if err != nil {
-		utils.LogErrorWithContext(err, "Failed to get or create chat in skip callback", map[string]interface{}{
-			"chat_id":             callback.Message.Chat.ID,
-			"session_question_id": session.QuestionID,
-		})
+		fmt.Printf("Failed to get or create chat in skip callback: %v (chat_id: %d)\n", err, callback.Message.Chat.ID)
+		return "Произошла ошибка при обработке команды", nil
+	}
+
+	// Получаем вопрос по ID
+	question, err := h.questionRepo.GetByID(uint(questionID))
+	if err != nil {
+		fmt.Printf("Failed to get question in skip callback: %v (chat_id: %d, question_id: %d)\n", err, chat.ID, questionID)
 		return "Произошла ошибка при обработке команды", nil
 	}
 
 	// Создаем реакцию "пропустить"
-	err = h.reactionRepo.CreateOrUpdateReaction(chat.ID, session.QuestionID, "skip")
+	err = h.reactionRepo.CreateOrUpdateReaction(chat.ID, question.ID, "skip")
 	if err != nil {
-		utils.LogErrorWithContext(err, "Failed to create skip reaction", map[string]interface{}{
-			"chat_id":     chat.ID,
-			"question_id": session.QuestionID,
-		})
+		fmt.Printf("Failed to create skip reaction: %v (chat_id: %d, question_id: %d)\n", err, chat.ID, question.ID)
 		return "Произошла ошибка при обработке команды", nil
 	}
 
 	// Уменьшаем баланс
 	err = h.chatRepo.DecreaseBalance(chat.ID)
 	if err != nil {
-		utils.LogErrorWithContext(err, "Failed to decrease balance in skip callback", map[string]interface{}{
-			"chat_id":     chat.ID,
-			"question_id": session.QuestionID,
-		})
+		fmt.Printf("Failed to decrease balance in skip callback: %v (chat_id: %d, question_id: %d)\n", err, chat.ID, question.ID)
 		return "Произошла ошибка при обработке команды", nil
 	}
 
@@ -101,49 +107,43 @@ func (h *FailCallback) GetCallbackData() string {
 
 // Handle обрабатывает callback "fail"
 func (h *FailCallback) Handle(callback *tgbotapi.CallbackQuery) (string, *tgbotapi.InlineKeyboardMarkup) {
-	// Получаем сессию пользователя
-	session := h.startHandler.sessionMgr.GetSession(callback.Message.Chat.ID)
-	if session == nil {
-		return "Сессия истекла\\. Начните заново командой /start", nil
+	// Парсим ID вопроса из callback данных
+	parts := strings.Split(callback.Data, ":")
+	if len(parts) != 2 {
+		return "Ошибка обработки команды", nil
+	}
+
+	questionID, err := strconv.ParseUint(parts[1], 10, 32)
+	if err != nil {
+		fmt.Printf("Failed to parse question ID in fail callback: %v (callback_data: %s)\n", err, callback.Data)
+		return "Ошибка обработки команды", nil
 	}
 
 	// Получаем чат пользователя
 	chat, err := h.chatRepo.GetOrCreate(callback.Message.Chat.ID, &callback.Message.Chat.Title)
 	if err != nil {
-		utils.LogErrorWithContext(err, "Failed to get or create chat in fail callback", map[string]interface{}{
-			"chat_id":             callback.Message.Chat.ID,
-			"session_question_id": session.QuestionID,
-		})
+		fmt.Printf("Failed to get or create chat in fail callback: %v (chat_id: %d)\n", err, callback.Message.Chat.ID)
 		return "Произошла ошибка при обработке команды", nil
 	}
 
-	// Получаем вопрос
-	question, err := h.questionRepo.GetByID(session.QuestionID)
+	// Получаем вопрос по ID
+	question, err := h.questionRepo.GetByID(uint(questionID))
 	if err != nil {
-		utils.LogErrorWithContext(err, "Failed to get question in fail callback", map[string]interface{}{
-			"question_id": session.QuestionID,
-			"chat_id":     chat.ID,
-		})
+		fmt.Printf("Failed to get question in fail callback: %v (chat_id: %d, question_id: %d)\n", err, chat.ID, questionID)
 		return "Произошла ошибка при обработке команды", nil
 	}
 
 	// Создаем реакцию "fail"
-	err = h.reactionRepo.CreateOrUpdateReaction(chat.ID, session.QuestionID, "fail")
+	err = h.reactionRepo.CreateOrUpdateReaction(chat.ID, question.ID, "fail")
 	if err != nil {
-		utils.LogErrorWithContext(err, "Failed to create fail reaction", map[string]interface{}{
-			"chat_id":     chat.ID,
-			"question_id": session.QuestionID,
-		})
+		fmt.Printf("Failed to create fail reaction: %v (chat_id: %d, question_id: %d)\n", err, chat.ID, question.ID)
 		return "Произошла ошибка при обработке команды", nil
 	}
 
 	// Уменьшаем баланс
 	err = h.chatRepo.DecreaseBalance(chat.ID)
 	if err != nil {
-		utils.LogErrorWithContext(err, "Failed to decrease balance in fail callback", map[string]interface{}{
-			"chat_id":     chat.ID,
-			"question_id": session.QuestionID,
-		})
+		fmt.Printf("Failed to decrease balance in fail callback: %v (chat_id: %d, question_id: %d)\n", err, chat.ID, question.ID)
 		return "Произошла ошибка при обработке команды", nil
 	}
 
@@ -157,7 +157,7 @@ func (h *FailCallback) Handle(callback *tgbotapi.CallbackQuery) (string, *tgbota
 		InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{
 			{
 				tgbotapi.NewInlineKeyboardButtonData("Точно!", "continue"),
-				tgbotapi.NewInlineKeyboardButtonData("Ладно, хватит", "finish"),
+				tgbotapi.NewInlineKeyboardButtonData("Ладно, хватит", fmt.Sprintf("finish:%d", question.ID)),
 			},
 		},
 	}
@@ -167,49 +167,43 @@ func (h *FailCallback) Handle(callback *tgbotapi.CallbackQuery) (string, *tgbota
 
 // HandleWithPhoto обрабатывает callback "fail" с отправкой фото
 func (h *FailCallback) HandleWithPhoto(callback *tgbotapi.CallbackQuery) (*tgbotapi.PhotoConfig, error) {
-	// Получаем сессию пользователя
-	session := h.startHandler.sessionMgr.GetSession(callback.Message.Chat.ID)
-	if session == nil {
-		return nil, fmt.Errorf("session expired")
+	// Парсим ID вопроса из callback данных
+	parts := strings.Split(callback.Data, ":")
+	if len(parts) != 2 {
+		return nil, fmt.Errorf("invalid callback data format")
+	}
+
+	questionID, err := strconv.ParseUint(parts[1], 10, 32)
+	if err != nil {
+		fmt.Printf("Failed to parse question ID in fail callback with photo: %v (callback_data: %s)\n", err, callback.Data)
+		return nil, fmt.Errorf("failed to parse question ID")
 	}
 
 	// Получаем чат пользователя
 	chat, err := h.chatRepo.GetOrCreate(callback.Message.Chat.ID, &callback.Message.Chat.Title)
 	if err != nil {
-		utils.LogErrorWithContext(err, "Failed to get or create chat in fail callback", map[string]interface{}{
-			"chat_id":             callback.Message.Chat.ID,
-			"session_question_id": session.QuestionID,
-		})
+		fmt.Printf("Failed to get or create chat in fail callback: %v (chat_id: %d)\n", err, callback.Message.Chat.ID)
 		return nil, err
 	}
 
-	// Получаем вопрос
-	question, err := h.questionRepo.GetByID(session.QuestionID)
+	// Получаем вопрос по ID
+	question, err := h.questionRepo.GetByID(uint(questionID))
 	if err != nil {
-		utils.LogErrorWithContext(err, "Failed to get question in fail callback", map[string]interface{}{
-			"question_id": session.QuestionID,
-			"chat_id":     chat.ID,
-		})
+		fmt.Printf("Failed to get question in fail callback: %v (chat_id: %d, question_id: %d)\n", err, chat.ID, questionID)
 		return nil, err
 	}
 
 	// Создаем реакцию "fail"
-	err = h.reactionRepo.CreateOrUpdateReaction(chat.ID, session.QuestionID, "fail")
+	err = h.reactionRepo.CreateOrUpdateReaction(chat.ID, question.ID, "fail")
 	if err != nil {
-		utils.LogErrorWithContext(err, "Failed to create fail reaction", map[string]interface{}{
-			"chat_id":     chat.ID,
-			"question_id": session.QuestionID,
-		})
+		fmt.Printf("Failed to create fail reaction: %v (chat_id: %d, question_id: %d)\n", err, chat.ID, question.ID)
 		return nil, err
 	}
 
 	// Уменьшаем баланс
 	err = h.chatRepo.DecreaseBalance(chat.ID)
 	if err != nil {
-		utils.LogErrorWithContext(err, "Failed to decrease balance in fail callback", map[string]interface{}{
-			"chat_id":     chat.ID,
-			"question_id": session.QuestionID,
-		})
+		fmt.Printf("Failed to decrease balance in fail callback: %v (chat_id: %d, question_id: %d)\n", err, chat.ID, question.ID)
 		return nil, err
 	}
 
@@ -218,9 +212,7 @@ func (h *FailCallback) HandleWithPhoto(callback *tgbotapi.CallbackQuery) (*tgbot
 		// Формируем URL картинки
 		photoURL, err := h.getPictureURL(*question.AnswerPicture.Path)
 		if err != nil {
-			utils.LogErrorWithContext(err, "Failed to get picture URL in fail callback", map[string]interface{}{
-				"path": *question.AnswerPicture.Path,
-			})
+			fmt.Printf("Failed to get picture URL in fail callback: %v (path: %s)\n", err, *question.AnswerPicture.Path)
 			return nil, err
 		}
 
@@ -240,7 +232,7 @@ func (h *FailCallback) HandleWithPhoto(callback *tgbotapi.CallbackQuery) (*tgbot
 			InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{
 				{
 					tgbotapi.NewInlineKeyboardButtonData("Точно!", "continue"),
-					tgbotapi.NewInlineKeyboardButtonData("Ладно, хватит", "finish"),
+					tgbotapi.NewInlineKeyboardButtonData("Ладно, хватит", fmt.Sprintf("finish:%d", question.ID)),
 				},
 			},
 		}
@@ -327,19 +319,20 @@ func (h *FinishCallback) GetCallbackData() string {
 
 // Handle обрабатывает callback "finish"
 func (h *FinishCallback) Handle(callback *tgbotapi.CallbackQuery) (string, *tgbotapi.InlineKeyboardMarkup) {
-	// Получаем сессию пользователя
-	session := h.startHandler.sessionMgr.GetSession(callback.Message.Chat.ID)
-	if session != nil {
-		// Получаем чат пользователя
-		chat, err := h.chatRepo.GetOrCreate(callback.Message.Chat.ID, &callback.Message.Chat.Title)
+	// Парсим ID вопроса из callback данных
+	parts := strings.Split(callback.Data, ":")
+	if len(parts) == 2 {
+		questionID, err := strconv.ParseUint(parts[1], 10, 32)
 		if err == nil {
-			// Создаем реакцию "fail" если еще не создана
-			h.reactionRepo.CreateOrUpdateReaction(chat.ID, session.QuestionID, "fail")
-			// Уменьшаем баланс
-			h.chatRepo.DecreaseBalance(chat.ID)
+			// Получаем чат пользователя
+			chat, chatErr := h.chatRepo.GetOrCreate(callback.Message.Chat.ID, &callback.Message.Chat.Title)
+			if chatErr == nil {
+				// Создаем реакцию "fail" если еще не создана
+				h.reactionRepo.CreateOrUpdateReaction(chat.ID, uint(questionID), "fail")
+				// Уменьшаем баланс
+				h.chatRepo.DecreaseBalance(chat.ID)
+			}
 		}
-		// Очищаем сессию
-		h.startHandler.sessionMgr.ClearSession(callback.Message.Chat.ID)
 	}
 
 	text := "Приходите завтра\\! Новые интересные вопросы появляются каждый день\\!"
