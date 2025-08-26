@@ -26,18 +26,18 @@ type Registry struct {
 
 // NewRegistry создает новый реестр обработчиков
 func NewRegistry(bot *tgbotapi.BotAPI) *Registry {
-	registry := &Registry{
-		commandHandlers:  make(map[string]CommandHandler),
-		CallbackHandlers: make(map[string]CallbackHandler),
-		textHandler:      NewTextResponseHandler(bot),
-	}
-
 	// Создаем обработчики команд
 	startHandler := NewStartHandler(bot)
 	balanceHandler := NewBalanceHandler(bot)
 	rulesHandler := NewRulesHandler(bot)
 	feedbackHandler := NewFeedbackHandler(bot)
 	proposalHandler := NewProposalHandler(bot)
+
+	registry := &Registry{
+		commandHandlers:  make(map[string]CommandHandler),
+		CallbackHandlers: make(map[string]CallbackHandler),
+		textHandler:      NewTextResponseHandler(bot, feedbackHandler),
+	}
 
 	// Регистрируем обработчики команд
 	registry.RegisterCommand(startHandler)

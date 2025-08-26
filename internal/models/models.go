@@ -18,6 +18,9 @@ type Chat struct {
 	// Поля для отслеживания ожидания ответа
 	LastQuestionID *uint      `gorm:"column:last_question_id" json:"last_question_id"`
 	ExpiresAt      *time.Time `gorm:"column:expires_at" json:"expires_at"`
+
+	// Поле для состояния обратной связи
+	FeedbackExpiresAt *time.Time `gorm:"column:feedback_expires_at" json:"feedback_expires_at"`
 }
 
 // TableName возвращает имя таблицы для Chat
@@ -39,6 +42,14 @@ func (c *Chat) IsWaitingAnswer() bool {
 		return false
 	}
 	return time.Now().UTC().Before(*c.ExpiresAt)
+}
+
+// IsWaitingFeedback проверяет, ждет ли чат обратной связи
+func (c *Chat) IsWaitingFeedback() bool {
+	if c.FeedbackExpiresAt == nil {
+		return false
+	}
+	return time.Now().UTC().Before(*c.FeedbackExpiresAt)
 }
 
 // Question представляет вопрос в квизе

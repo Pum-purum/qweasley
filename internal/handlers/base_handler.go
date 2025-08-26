@@ -61,6 +61,16 @@ func (h *BaseHandler) ClearWaitingAnswer(chatID uint) error {
 	return h.chatRepo.ClearWaitingAnswer(chatID)
 }
 
+// SetWaitingFeedback устанавливает ожидание обратной связи
+func (h *BaseHandler) SetWaitingFeedback(chatID uint, expiresIn time.Duration) error {
+	return h.chatRepo.SetWaitingFeedback(chatID, expiresIn)
+}
+
+// ClearWaitingFeedback очищает ожидание обратной связи
+func (h *BaseHandler) ClearWaitingFeedback(chatID uint) error {
+	return h.chatRepo.ClearWaitingFeedback(chatID)
+}
+
 // DecreaseBalance уменьшает баланс
 func (h *BaseHandler) DecreaseBalance(chatID uint) error {
 	return h.chatRepo.DecreaseBalance(chatID)

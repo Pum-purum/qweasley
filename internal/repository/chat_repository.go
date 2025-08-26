@@ -88,3 +88,28 @@ func (r *ChatRepository) GetByID(chatID uint) (*models.Chat, error) {
 	}
 	return &chat, nil
 }
+
+// SetWaitingFeedback устанавливает ожидание обратной связи
+func (r *ChatRepository) SetWaitingFeedback(chatID uint, expiresIn time.Duration) error {
+	chat, err := r.GetByID(chatID)
+	if err != nil {
+		return err
+	}
+
+	expiresAt := time.Now().UTC().Add(expiresIn)
+	chat.FeedbackExpiresAt = &expiresAt
+
+	return r.db.Save(chat).Error
+}
+
+// ClearWaitingFeedback очищает ожидание обратной связи
+func (r *ChatRepository) ClearWaitingFeedback(chatID uint) error {
+	chat, err := r.GetByID(chatID)
+	if err != nil {
+		return err
+	}
+
+	chat.FeedbackExpiresAt = nil
+
+	return r.db.Save(chat).Error
+}
