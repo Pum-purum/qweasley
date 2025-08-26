@@ -132,7 +132,7 @@ func (h *BaseHandler) EscapeMarkdown(text string) string {
 func (h *BaseHandler) FormatQuestionText(question *models.Question) string {
 	text := "*" + h.EscapeMarkdown(question.Text) + "*"
 
-	// Добавляем рейтинг, если он есть (как в PHP-версии)
+	// Добавляем рейтинг, если он есть
 	if question.Rating != nil && *question.Rating > 0 {
 		ratingText := fmt.Sprintf("На этот вопрос отвечают %d%% пользователей", *question.Rating)
 		text += "\n\n_" + h.EscapeMarkdown(ratingText) + "_"
