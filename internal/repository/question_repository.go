@@ -116,3 +116,23 @@ func (r *QuestionRepository) GetQuestion(chat *models.Chat, reactionRepo *Reacti
 
 	return &question, nil
 }
+
+// UpdateQuestionRating обновляет рейтинг конкретного вопроса
+func (r *QuestionRepository) UpdateQuestionRating(questionID uint) error {
+	query := `
+		UPDATE questions 
+		SET rating = (
+			SELECT COALESCE(
+				ROUND(
+					(COUNT(CASE WHEN r.responsed_at IS NOT NULL THEN 1 END) * 100.0) / 
+					NULLIF(COUNT(*), 0)
+				), 0
+			)
+			FROM reactions r 
+			WHERE r.question_id = ?
+		)
+		WHERE id = ? AND is_published = true
+	`
+
+	return r.db.Exec(query, questionID, questionID).Error
+}

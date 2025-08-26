@@ -290,6 +290,13 @@ func (h *BaseHandler) ProcessUserReaction(chatID uint, questionID uint, reaction
 		fmt.Printf("Failed to clear waiting answer: %v (chat_id: %d)\n", err, chatID)
 	}
 
+	// Обновляем рейтинг вопроса после любой реакции
+	err = h.questionRepo.UpdateQuestionRating(questionID)
+	if err != nil {
+		fmt.Printf("Failed to update question rating: %v (question_id: %d)\n", err, questionID)
+		// Не возвращаем ошибку, так как основная логика уже выполнена
+	}
+
 	return nil
 }
 
@@ -305,25 +312,8 @@ func (h *BaseHandler) ProcessFailReaction(chatID uint, questionID uint) error {
 
 // ProcessFinishReaction обрабатывает реакцию "закончить"
 func (h *BaseHandler) ProcessFinishReaction(chatID uint, questionID uint) error {
-	// Для finish создаем реакцию "fail" если еще не создана
-	err := h.reactionRepo.CreateOrUpdateReaction(chatID, questionID, "fail")
-	if err != nil {
-		return fmt.Errorf("failed to create fail reaction: %v", err)
-	}
-
-	// Уменьшаем баланс
-	err = h.DecreaseBalance(chatID)
-	if err != nil {
-		return fmt.Errorf("failed to decrease balance: %v", err)
-	}
-
-	// Очищаем ожидание ответа
-	err = h.ClearWaitingAnswer(chatID)
-	if err != nil {
-		fmt.Printf("Failed to clear waiting answer: %v (chat_id: %d)\n", err, chatID)
-	}
-
-	return nil
+	// Для finish используем тот же ProcessUserReaction с типом "fail"
+	return h.ProcessUserReaction(chatID, questionID, "fail")
 }
 
 // SendMessage отправляет текстовое сообщение
