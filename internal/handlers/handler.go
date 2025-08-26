@@ -31,7 +31,6 @@ func NewRegistry(bot *tgbotapi.BotAPI) *Registry {
 	balanceHandler := NewBalanceHandler(bot)
 	rulesHandler := NewRulesHandler(bot)
 	feedbackHandler := NewFeedbackHandler(bot)
-	proposalHandler := NewProposalHandler(bot)
 
 	registry := &Registry{
 		commandHandlers:  make(map[string]CommandHandler),
@@ -44,7 +43,6 @@ func NewRegistry(bot *tgbotapi.BotAPI) *Registry {
 	registry.RegisterCommand(balanceHandler)
 	registry.RegisterCommand(rulesHandler)
 	registry.RegisterCommand(feedbackHandler)
-	registry.RegisterCommand(proposalHandler)
 
 	// Регистрируем обработчики callback'ов
 	registry.RegisterCallback(NewSkipCallback(bot))
