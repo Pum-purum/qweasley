@@ -55,7 +55,20 @@ func (h *SkipCallback) Handle(callback *tgbotapi.CallbackQuery) error {
 		return h.SendMessage(callback.Message.Chat.ID, "Произошла ошибка при обработке команды", nil)
 	}
 
-	// Показываем следующий вопрос
-	questionText, keyboard := h.GetNextQuestion(callback.Message.Chat.ID, &callback.Message.Chat.Title)
-	return h.SendMessage(callback.Message.Chat.ID, questionText, keyboard)
+	// Получаем следующий вопрос
+	nextQuestion, keyboard, err := h.GetNextQuestion(callback.Message.Chat.ID, &callback.Message.Chat.Title)
+	if err != nil {
+		switch err.Error() {
+		case "insufficient balance":
+			return h.SendMessage(callback.Message.Chat.ID, "У вас закончились монеты\\. Пополните баланс командой /balance и ждем вас снова\\!", nil)
+		case "no questions available":
+			return h.SendMessage(callback.Message.Chat.ID, "Уоу, вы ответили на все вопросы\\! Приходите завтра\\! Новые интересные вопросы появляются каждый день\\!", nil)
+		default:
+			fmt.Printf("Failed to get next question: %v (chat_id: %d)\n", err, callback.Message.Chat.ID)
+			return h.SendMessage(callback.Message.Chat.ID, "Произошла ошибка при получении следующего вопроса", nil)
+		}
+	}
+
+	// Отправляем следующий вопрос (с картинкой или без)
+	return h.SendQuestion(callback.Message.Chat.ID, nextQuestion, keyboard)
 }

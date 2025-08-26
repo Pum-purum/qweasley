@@ -128,7 +128,7 @@ func Handler(ctx context.Context, request json.RawMessage) (*Response, error) {
 		cloudLog(bodyData, "message")
 		handleMessage(update.Message)
 	} else if update.CallbackQuery != nil {
-		cloudLog(bodyData, update.CallbackQuery.Message.Text)
+		cloudLog(bodyData, update.CallbackQuery.Data)
 		handleCallbackQuery(update.CallbackQuery)
 	}
 

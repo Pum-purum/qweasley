@@ -38,34 +38,9 @@ func (h *StartHandler) Handle(message *tgbotapi.Message) error {
 		}
 	}
 
-	// Проверяем наличие картинки вопроса
-	if question.QuestionPicture != nil && question.QuestionPicture.Path != nil {
-		// Формируем URL картинки
-		photoURL, err := h.GetPictureURL(*question.QuestionPicture.Path)
-		if err != nil {
-			fmt.Printf("Failed to get picture URL: %v (path: %s)\n", err, *question.QuestionPicture.Path)
-			// Если не удалось получить картинку, отправляем текстовое сообщение
-			questionText := h.FormatQuestionText(question)
-			keyboard := h.CreateQuestionKeyboard()
-			return h.SendMessage(message.Chat.ID, questionText, keyboard)
-		}
-
-		// Формируем текст вопроса
-		caption := h.FormatQuestionText(question)
-
-		// Создаем клавиатуру
-		keyboard := h.CreateQuestionKeyboard()
-
-		// Отправляем фото
-		return h.SendPhoto(message.Chat.ID, photoURL, caption, keyboard)
-	}
-
-	// Формируем текст вопроса
-	questionText := h.FormatQuestionText(question)
-
 	// Создаем клавиатуру
 	keyboard := h.CreateQuestionKeyboard()
 
-	// Отправляем текстовое сообщение
-	return h.SendMessage(message.Chat.ID, questionText, keyboard)
+	// Отправляем вопрос (с картинкой или без)
+	return h.SendQuestion(message.Chat.ID, question, keyboard)
 }

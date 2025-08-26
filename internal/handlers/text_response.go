@@ -19,7 +19,7 @@ func NewTextResponseHandler(bot *tgbotapi.BotAPI) *TextResponseHandler {
 
 // Handle обрабатывает текстовый ответ на вопрос
 func (h *TextResponseHandler) Handle(message *tgbotapi.Message) error {
-	responseText, keyboard, err := h.ProcessTextResponse(message)
+	responseText, keyboard, photoURL, err := h.ProcessTextResponse(message)
 	if err != nil {
 		fmt.Printf("Failed to process text response: %v (chat_id: %d)\n", err, message.Chat.ID)
 		return h.SendMessage(message.Chat.ID, "Произошла ошибка при обработке ответа", nil)
@@ -30,6 +30,11 @@ func (h *TextResponseHandler) Handle(message *tgbotapi.Message) error {
 		return nil
 	}
 
-	// Отправляем ответ
+	// Если есть фото, отправляем фото с подписью
+	if photoURL != "" {
+		return h.SendPhoto(message.Chat.ID, photoURL, responseText, keyboard)
+	}
+
+	// Иначе отправляем текстовое сообщение
 	return h.SendMessage(message.Chat.ID, responseText, keyboard)
 }
