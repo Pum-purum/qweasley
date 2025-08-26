@@ -14,6 +14,10 @@ type Chat struct {
 	Balance    int       `gorm:"column:balance;default:0;not null" json:"balance"`
 	TelegramID int64     `gorm:"column:telegram_id;uniqueIndex;not null" json:"telegram_id"`
 	Title      *string   `gorm:"column:title" json:"title"`
+
+	// Поля для отслеживания ожидания ответа
+	LastQuestionID *uint      `gorm:"column:last_question_id" json:"last_question_id"`
+	ExpiresAt      *time.Time `gorm:"column:expires_at" json:"expires_at"`
 }
 
 // TableName возвращает имя таблицы для Chat
@@ -27,6 +31,14 @@ func (c *Chat) BeforeCreate(tx *gorm.DB) error {
 		c.Balance = 30 // Начальный баланс
 	}
 	return nil
+}
+
+// IsWaitingAnswer проверяет, ждет ли чат ответа на вопрос
+func (c *Chat) IsWaitingAnswer() bool {
+	if c.LastQuestionID == nil || c.ExpiresAt == nil {
+		return false
+	}
+	return time.Now().UTC().Before(*c.ExpiresAt)
 }
 
 // Question представляет вопрос в квизе

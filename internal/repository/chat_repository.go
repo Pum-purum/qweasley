@@ -4,6 +4,7 @@ import (
 	"gorm.io/gorm"
 	"qweasley/internal/database"
 	"qweasley/internal/models"
+	"time"
 )
 
 // ChatRepository репозиторий для работы с чатами
@@ -41,6 +42,33 @@ func (r *ChatRepository) GetOrCreate(telegramID int64, title *string) (*models.C
 	return &chat, nil
 }
 
+// SetWaitingAnswer устанавливает ожидание ответа на вопрос
+func (r *ChatRepository) SetWaitingAnswer(chatID uint, questionID uint, expiresIn time.Duration) error {
+	chat, err := r.GetByID(chatID)
+	if err != nil {
+		return err
+	}
+
+	chat.LastQuestionID = &questionID
+	expiresAt := time.Now().UTC().Add(expiresIn)
+	chat.ExpiresAt = &expiresAt
+
+	return r.db.Save(chat).Error
+}
+
+// ClearWaitingAnswer очищает ожидание ответа
+func (r *ChatRepository) ClearWaitingAnswer(chatID uint) error {
+	chat, err := r.GetByID(chatID)
+	if err != nil {
+		return err
+	}
+
+	chat.LastQuestionID = nil
+	chat.ExpiresAt = nil
+
+	return r.db.Save(chat).Error
+}
+
 // UpdateBalance обновляет баланс чата
 func (r *ChatRepository) UpdateBalance(chatID uint, balance int) error {
 	return r.db.Model(&models.Chat{}).Where("id = ?", chatID).Update("balance", balance).Error
@@ -49,4 +77,14 @@ func (r *ChatRepository) UpdateBalance(chatID uint, balance int) error {
 // DecreaseBalance уменьшает баланс на 1
 func (r *ChatRepository) DecreaseBalance(chatID uint) error {
 	return r.db.Model(&models.Chat{}).Where("id = ?", chatID).Update("balance", gorm.Expr("balance - 1")).Error
+}
+
+// GetByID получает чат по ID
+func (r *ChatRepository) GetByID(chatID uint) (*models.Chat, error) {
+	var chat models.Chat
+	err := r.db.First(&chat, chatID).Error
+	if err != nil {
+		return nil, err
+	}
+	return &chat, nil
 }

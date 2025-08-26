@@ -1,19 +1,19 @@
 package handlers
 
 import (
+	"fmt"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"strings"
 )
 
-// CommandHandler интерфейс для всех обработчиков команд
+// CommandHandler интерфейс для обработчиков команд
 type CommandHandler interface {
-	Handle(message *tgbotapi.Message) (string, *tgbotapi.InlineKeyboardMarkup)
+	Handle(message *tgbotapi.Message) error
 	GetCommand() string
 }
 
 // CallbackHandler интерфейс для обработчиков callback'ов
 type CallbackHandler interface {
-	Handle(callback *tgbotapi.CallbackQuery) (string, *tgbotapi.InlineKeyboardMarkup)
+	Handle(callback *tgbotapi.CallbackQuery) error
 	GetCallbackData() string
 }
 
@@ -21,14 +21,38 @@ type CallbackHandler interface {
 type Registry struct {
 	commandHandlers  map[string]CommandHandler
 	CallbackHandlers map[string]CallbackHandler
+	textHandler      TextHandler
 }
 
 // NewRegistry создает новый реестр обработчиков
-func NewRegistry() *Registry {
-	return &Registry{
+func NewRegistry(bot *tgbotapi.BotAPI) *Registry {
+	registry := &Registry{
 		commandHandlers:  make(map[string]CommandHandler),
 		CallbackHandlers: make(map[string]CallbackHandler),
+		textHandler:      NewTextResponseHandler(bot),
 	}
+
+	// Создаем обработчики команд
+	startHandler := NewStartHandler(bot)
+	balanceHandler := NewBalanceHandler(bot)
+	rulesHandler := NewRulesHandler(bot)
+	feedbackHandler := NewFeedbackHandler(bot)
+	proposalHandler := NewProposalHandler(bot)
+
+	// Регистрируем обработчики команд
+	registry.RegisterCommand(startHandler)
+	registry.RegisterCommand(balanceHandler)
+	registry.RegisterCommand(rulesHandler)
+	registry.RegisterCommand(feedbackHandler)
+	registry.RegisterCommand(proposalHandler)
+
+	// Регистрируем обработчики callback'ов
+	registry.RegisterCallback(NewSkipCallback(bot))
+	registry.RegisterCallback(NewFailCallback(bot))
+	registry.RegisterCallback(NewContinueCallback(startHandler, bot))
+	registry.RegisterCallback(NewFinishCallback(bot))
+
+	return registry
 }
 
 // RegisterCommand регистрирует обработчик команды
@@ -42,23 +66,24 @@ func (r *Registry) RegisterCallback(handler CallbackHandler) {
 }
 
 // HandleCommand обрабатывает команду
-func (r *Registry) HandleCommand(command string, message *tgbotapi.Message) (string, *tgbotapi.InlineKeyboardMarkup) {
+func (r *Registry) HandleCommand(command string, message *tgbotapi.Message) error {
 	if handler, exists := r.commandHandlers[command]; exists {
 		return handler.Handle(message)
 	}
-	return "Неизвестная команда. Доступные команды: /start, /balance, /rules, /feedback, /proposal", nil
+	return fmt.Errorf("команда не найдена: %s", command)
 }
 
 // HandleCallback обрабатывает callback
-func (r *Registry) HandleCallback(callbackData string, callback *tgbotapi.CallbackQuery) (string, *tgbotapi.InlineKeyboardMarkup) {
-	// Парсим callback данные (формат: "action:questionID")
-	parts := strings.Split(callbackData, ":")
-	action := parts[0]
-
-	if handler, exists := r.CallbackHandlers[action]; exists {
+func (r *Registry) HandleCallback(callbackData string, callback *tgbotapi.CallbackQuery) error {
+	if handler, exists := r.CallbackHandlers[callbackData]; exists {
 		return handler.Handle(callback)
 	}
-	return "Неизвестный callback", nil
+	return fmt.Errorf("callback не найден: %s", callbackData)
+}
+
+// HandleTextMessage обрабатывает текстовое сообщение
+func (r *Registry) HandleTextMessage(message *tgbotapi.Message) error {
+	return r.textHandler.Handle(message)
 }
 
 // GetStartHandler возвращает обработчик команды start
@@ -69,24 +94,4 @@ func (r *Registry) GetStartHandler() *StartHandler {
 		}
 	}
 	return nil
-}
-
-// GetFailHandler возвращает обработчик callback'а fail
-func (r *Registry) GetFailHandler() *FailCallback {
-	if handler, exists := r.CallbackHandlers["fail"]; exists {
-		if failHandler, ok := handler.(*FailCallback); ok {
-			return failHandler
-		}
-	}
-	return nil
-}
-
-// HandleTextMessage обрабатывает текстовое сообщение
-func (r *Registry) HandleTextMessage(message *tgbotapi.Message) (string, *tgbotapi.InlineKeyboardMarkup) {
-	// Получаем обработчик start для обработки текстовых ответов
-	startHandler := r.GetStartHandler()
-	if startHandler != nil {
-		return startHandler.HandleTextResponse(message)
-	}
-	return "Начните квиз командой /start", nil
 }

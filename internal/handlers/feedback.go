@@ -9,14 +9,14 @@ import (
 
 // FeedbackHandler обработчик команды /feedback
 type FeedbackHandler struct {
-	chatRepo     *repository.ChatRepository
+	*BaseHandler
 	feedbackRepo *repository.FeedbackRepository
 }
 
 // NewFeedbackHandler создает новый обработчик команды feedback
-func NewFeedbackHandler() *FeedbackHandler {
+func NewFeedbackHandler(bot *tgbotapi.BotAPI) *FeedbackHandler {
 	return &FeedbackHandler{
-		chatRepo:     repository.NewChatRepository(),
+		BaseHandler:  NewBaseHandler(bot),
 		feedbackRepo: repository.NewFeedbackRepository(),
 	}
 }
@@ -27,12 +27,12 @@ func (h *FeedbackHandler) GetCommand() string {
 }
 
 // Handle обрабатывает команду /feedback
-func (h *FeedbackHandler) Handle(message *tgbotapi.Message) (string, *tgbotapi.InlineKeyboardMarkup) {
+func (h *FeedbackHandler) Handle(message *tgbotapi.Message) error {
 	// Получаем или создаем чат пользователя
-	chat, err := h.chatRepo.GetOrCreate(message.Chat.ID, &message.Chat.Title)
+	chat, err := h.GetOrCreateChat(message.Chat.ID, &message.Chat.Title)
 	if err != nil {
 		fmt.Printf("Failed to get or create chat: %v\n", err)
-		return "Произошла ошибка при обработке команды", nil
+		return h.SendMessage(message.Chat.ID, "Произошла ошибка при обработке команды", nil)
 	}
 
 	// Если это текстовое сообщение (не команда), сохраняем его как обратную связь
@@ -45,12 +45,12 @@ func (h *FeedbackHandler) Handle(message *tgbotapi.Message) (string, *tgbotapi.I
 		err = h.feedbackRepo.Create(feedback)
 		if err != nil {
 			fmt.Printf("Failed to create feedback: %v\n", err)
-			return "Произошла ошибка при сохранении сообщения", nil
+			return h.SendMessage(message.Chat.ID, "Произошла ошибка при сохранении сообщения", nil)
 		}
 
-		return "Ваше сообщение принято\\! Спасибо\\!", nil
+		return h.SendMessage(message.Chat.ID, "Ваше сообщение принято\\! Спасибо\\!", nil)
 	}
 
 	text := "Напишите ваше сообщение администрации\\. Мы обязательно его прочитаем и ответим\\!"
-	return text, nil
+	return h.SendMessage(message.Chat.ID, text, nil)
 }
